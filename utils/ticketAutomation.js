@@ -320,6 +320,15 @@ async function handleTicketAutomation(message) {
     if (hasImage) {
       setState(message.channel.id, { awaitingProof: false, proofReceived: true });
       await message.react('✅').catch(() => {});
+      await message.reply({
+        embeds: [
+          brandedEmbed({
+            title: '✅ Preuve reçue',
+            description: "Merci ! On previent le staff pour qu'il vérifie ta commande. Un membre de l'équipe va la valider dès que possible.",
+            color: GOLD_BOOST,
+          }),
+        ],
+      });
       await dmStaff(message, {
         title: '📨 Preuve de paiement envoyée',
         description: `${message.author} (${message.author.tag}) a envoyé une preuve de paiement dans son ticket. **Merci de vérifier sur PayPal et de valider la commande** (dashboard admin ou marquage manuel).`,

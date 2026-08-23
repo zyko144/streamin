@@ -44,6 +44,7 @@ Rôles : `Staff`, `✅ Client Vérifié`, `💎 Booster VIP`.
 - **Notifications de commandes** : le site poste directement sur le webhook Discord créé par `/setup` (repo `shop-plus`, variable `DISCORD_ORDERS_WEBHOOK_URL`) — ce bot n'a pas besoin d'accès à la base de données du site pour ça.
 - **Logs staff** : ouverture/fermeture de ticket, récompenses de boost, exécution de `/setup` — tout est loggé dans `📝・logs` (jamais de secret/token/donnée bancaire).
 - **Commandes utiles** : `/ping`, `/serverinfo`, `/userinfo [membre]`, `/avatar [membre]`, `/stock [categorie]` (lit le catalogue public du site via Supabase, `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY`).
+- **`/order_lookup <email_ou_numero>`** (staff uniquement) : affiche l'historique complet d'un client (date, produits, prix, statut) directement dans le ticket. **Volontairement réservé au staff** et pas automatique sur les messages des clients — sinon n'importe qui pourrait taper l'email d'un autre client pour consulter ses achats. Nécessite `SUPABASE_SERVICE_ROLE_KEY` (voir Sécurité ci-dessous).
 
 ## Sécurité
 
@@ -53,11 +54,12 @@ Rôles : `Staff`, `✅ Client Vérifié`, `💎 Booster VIP`.
 - Anti-spam sur la création de tickets, vérifié contre l'état réel des salons.
 - Le process ne crash pas sur une erreur isolée (`unhandledRejection`/`uncaughtException` interceptés, chaque interaction dans un try/catch).
 - **Ne fais jamais tourner deux instances du bot en même temps** (deux `npm start` simultanés, ou un process oublié + un déploiement Render) : chacune reçoit les mêmes interactions Discord et dupliquerait les actions. Un seul process à la fois.
+- **`SUPABASE_SERVICE_ROLE_KEY`** (pour `/order_lookup`) donne un accès total à la base du site en ignorant toutes les règles de sécurité (RLS) — c'est le secret le plus sensible de tout le projet. Ne la colle **jamais** dans un chat ou un message : ajoute-la uniquement dans les variables d'environnement Render. La commande qui l'utilise est réservée au staff et ne fait que des lectures (aucune écriture).
 
 ## Déploiement sur Render
 
 - **Type** : Web Service (Node) — pas Static Site.
 - **Build command** : `npm install`
 - **Start command** : `npm start`
-- **Variables d'environnement** : `TOKEN`, `CLIENT_ID`, `GUILD_ID`, `ADMIN_ROLE_ID` (optionnel), `ORDERS_CHANNEL_ID` (optionnel), `LOGO_URL` (optionnel), `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY` (pour `/stock`), `SUPABASE_URL`/`SUPABASE_KEY` (optionnel, persistance avancée).
+- **Variables d'environnement** : `TOKEN`, `CLIENT_ID`, `GUILD_ID`, `ADMIN_ROLE_ID` (optionnel), `ORDERS_CHANNEL_ID` (optionnel), `LOGO_URL` (optionnel), `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY` (pour `/stock`), `SUPABASE_SERVICE_ROLE_KEY` (pour `/order_lookup`, voir Sécurité), `SUPABASE_URL`/`SUPABASE_KEY` (optionnel, persistance avancée).
 - Après le premier déploiement (ou en local avant) : `npm run deploy` pour enregistrer les commandes slash.

@@ -73,6 +73,9 @@ async function runSetup(guild) {
   const boosterRole = await findOrCreateRole(guild, '💎 Booster VIP', { color: GOLD_BOOST, hoist: true, permissions: [] });
   summary.push(`✅ Rôle ${boosterRole}`);
 
+  const rewardRole = await findOrCreateRole(guild, '🎁 Récompense Boost', { color: 0xffd700, hoist: true, permissions: [] });
+  summary.push(`✅ Rôle ${rewardRole}`);
+
   const readOnly = (extra = []) => [
     { id: everyone, deny: [PermissionFlagsBits.SendMessages], allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory] },
     { id: staffRole.id, allow: [PermissionFlagsBits.SendMessages] },

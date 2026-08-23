@@ -34,9 +34,14 @@ async function handleBoostStarted(oldMember, newMember) {
 
   const boostChannel = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === '🚀・boost-remerciements');
   const boosterRole = guild.roles.cache.find((r) => r.name === '💎 Booster VIP');
+  const rewardRole = guild.roles.cache.find((r) => r.name === '🎁 Récompense Boost');
+  const isRewardMilestone = count % REWARD_EVERY === 0;
 
   if (boosterRole && !newMember.roles.cache.has(boosterRole.id)) {
     await newMember.roles.add(boosterRole).catch(() => {});
+  }
+  if (isRewardMilestone && rewardRole && !newMember.roles.cache.has(rewardRole.id)) {
+    await newMember.roles.add(rewardRole).catch(() => {});
   }
 
   if (boostChannel?.isTextBased()) {
@@ -45,8 +50,10 @@ async function handleBoostStarted(oldMember, newMember) {
         content: `${newMember}`,
         embeds: [
           brandedEmbed({
-            title: '🚀 Merci pour le boost !',
-            description: `${newMember} vient de booster le serveur streamIN (boost n°${count} pour ce membre). Merci pour le soutien ! 💖`,
+            title: isRewardMilestone ? '🎁 Récompense débloquée !' : '🚀 Merci pour le boost !',
+            description: isRewardMilestone
+              ? `${newMember} vient de booster le serveur streamIN (boost n°${count} pour ce membre) et **débloque le droit à 1 compte Steam ou 1 compte streaming au choix, gratuit** ! Le rôle ${rewardRole ?? '🎁 Récompense Boost'} lui a été attribué — c'est ce rôle qui indique qui a une récompense à réclamer. Un ticket a été ouvert automatiquement pour la livraison. Merci pour le soutien ! 💖`
+              : `${newMember} vient de booster le serveur streamIN (boost n°${count} pour ce membre). Merci pour le soutien ! 💖 (encore ${REWARD_EVERY - (count % REWARD_EVERY)} boost avant la prochaine récompense)`,
             image: LOGO_URL,
             color: GOLD_BOOST,
           }),
@@ -57,7 +64,7 @@ async function handleBoostStarted(oldMember, newMember) {
 
   logAction(guild, 'BOOST_STARTED', { Membre: `${newMember} (${newMember.id})`, 'Compteur cumulé': `${count}` });
 
-  if (count % REWARD_EVERY === 0) {
+  if (isRewardMilestone) {
     const staffRole = guild.roles.cache.find((r) => r.name === 'Staff');
     const boostCat = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === '🚀 BOOST');
     const result = await createTicket(guild, newMember, {

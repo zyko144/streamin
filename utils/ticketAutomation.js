@@ -38,24 +38,29 @@ function markTriggered(channelId, intentId) {
 
 /**
  * Previent le staff en MP (pas dans le salon, pour ne pas polluer le
- * ticket) : un message par membre ayant le role Staff, avec le lien direct
- * vers le salon et le type de probleme detecte.
+ * ticket) : un message par membre ayant le role Staff, + toujours le
+ * proprietaire actuel du serveur (meme s'il n'a pas/plus le role Staff,
+ * ex: transfert de propriete recent) — avec le lien direct vers le salon
+ * et le type de probleme detecte.
  */
 async function dmStaff(message, { title, description }) {
-  const staffRole = message.guild.roles.cache.find((r) => r.name === 'Staff');
-  if (!staffRole) return;
-
   await message.guild.members.fetch().catch(() => {});
-  const ticketUrl = `https://discord.com/channels/${message.guild.id}/${message.channel.id}`;
 
+  const staffRole = message.guild.roles.cache.find((r) => r.name === 'Staff');
+  const recipients = new Map();
+  for (const member of staffRole?.members.values() ?? []) recipients.set(member.id, member);
+  const owner = await message.guild.fetchOwner().catch(() => null);
+  if (owner) recipients.set(owner.id, owner);
+  recipients.delete(message.author.id); // ne pas se DM soi-meme (proprietaire du ticket qui est aussi staff)
+
+  const ticketUrl = `https://discord.com/channels/${message.guild.id}/${message.channel.id}`;
   const embed = brandedEmbed({
     title,
     description: `${description}\n\n🔗 [Aller au ticket](${ticketUrl})`,
     color: RED_ALERT,
   });
 
-  for (const member of staffRole.members.values()) {
-    if (member.id === message.author.id) continue; // ne pas se DM soi-meme (proprietaire du ticket qui est aussi staff)
+  for (const member of recipients.values()) {
     member.send({ embeds: [embed] }).catch(() => {}); // ignore si MPs fermes
   }
 }

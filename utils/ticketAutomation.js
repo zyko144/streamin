@@ -87,6 +87,30 @@ async function dmStaff(message, { title, description }) {
   }
 }
 
+/**
+ * Salon fixe et fiable en complement du MP (les MP dependent des
+ * parametres de confidentialite de chaque membre, ce salon marche
+ * toujours). Ping @Staff a chaque preuve de paiement recue.
+ */
+async function pingVerifChannel(message) {
+  const verifChannel = message.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === '✅・verif-ppl');
+  if (!verifChannel?.isTextBased()) return;
+  const staffRole = message.guild.roles.cache.find((r) => r.name === 'Staff');
+  const ticketUrl = `https://discord.com/channels/${message.guild.id}/${message.channel.id}`;
+  await verifChannel
+    .send({
+      content: staffRole ? `${staffRole}` : undefined,
+      embeds: [
+        brandedEmbed({
+          title: '💳 Preuve de paiement à vérifier',
+          description: `${message.author} (${message.author.tag}) a envoyé une preuve de paiement.\n\n🔗 [Aller au ticket](${ticketUrl})`,
+          color: GOLD_BOOST,
+        }),
+      ],
+    })
+    .catch((err) => console.error('⚠️  Impossible de poster dans #verif-ppl:', err.message));
+}
+
 // --- "J'ai payé" : de nombreuses façons de le dire (regex sur texte normalisé : minuscules, sans accents) ---
 const PAYMENT_PATTERNS = [
   /\b(j.?ai|jai)\s*(deja\s*)?paye[r]?\b/, // j'ai payé / j'ai déjà payé / j'ai payer (faute courante)
@@ -355,6 +379,7 @@ async function handleTicketAutomation(message) {
         title: '📨 Preuve de paiement envoyée',
         description: `${message.author} (${message.author.tag}) a envoyé une preuve de paiement dans son ticket. **Merci de vérifier sur PayPal et de valider la commande** (dashboard admin ou marquage manuel).`,
       });
+      await pingVerifChannel(message);
       logAction(message.guild, 'PAYMENT_PROOF_SUBMITTED', { Salon: `${message.channel}`, Client: `${message.author} (${message.author.id})` });
       return;
     }

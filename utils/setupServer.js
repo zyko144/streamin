@@ -166,7 +166,8 @@ async function runSetup(guild) {
   const staffCat = await findOrCreateCategory(guild, '🔒 STAFF');
   await staffCat.permissionOverwrites.set(staffOnly()).catch(() => {});
   const logsChannel = await findOrCreateChannel(guild, '📝・logs', { parent: staffCat, overwrites: staffOnly() });
-  summary.push(`✅ Catégorie ${staffCat} (${logsChannel})`);
+  const verifChannel = await findOrCreateChannel(guild, '✅・verif-ppl', { parent: staffCat, overwrites: staffOnly() });
+  summary.push(`✅ Catégorie ${staffCat} (${logsChannel}, ${verifChannel})`);
 
   // --- Règlement + verification ---
   if (!alreadyPosted(guild.id, 'reglement')) {

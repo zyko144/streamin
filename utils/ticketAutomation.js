@@ -175,9 +175,15 @@ async function handleTicketAutomation(message) {
   if (message.author.bot) return;
   if (!isTicketChannel(message.channel)) return;
 
+  // Le proprietaire du ticket declenche toujours l'automatisation, meme s'il
+  // a aussi le role Staff (ex: le patron qui teste, ou un membre du staff
+  // qui achete pour lui-meme). On ne filtre que les AUTRES membres du staff
+  // qui repondent dans le ticket de quelqu'un d'autre (discussion interne).
+  const ticketOwnerId = message.channel.topic?.split(':')[1];
+  const isTicketOwner = message.author.id === ticketOwnerId;
   const member = message.member;
   const isStaff = member?.roles.cache.some((r) => r.name === 'Staff') ?? false;
-  if (isStaff) return; // n'automatise pas sur les messages du staff lui-meme
+  if (isStaff && !isTicketOwner) return;
 
   const state = getState(message.channel.id);
 

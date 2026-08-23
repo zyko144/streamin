@@ -85,7 +85,7 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'stock') {
     if (!supabase) {
-      return interaction.reply({ embeds: [brandedEmbed({ title: '⚠️ Stock indisponible', description: "SUPABASE_URL/SUPABASE_KEY ne sont pas configurés sur le bot.", color: RED })], ephemeral: true });
+      return interaction.reply({ embeds: [brandedEmbed({ title: '⚠️ Stock indisponible', description: "SHOP_SUPABASE_URL/SHOP_SUPABASE_KEY ne sont pas configurés sur le bot (variables Render).", color: RED })], ephemeral: true });
     }
     await interaction.deferReply();
     const categorie = interaction.options.getString('categorie');

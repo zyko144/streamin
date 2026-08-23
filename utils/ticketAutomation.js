@@ -36,29 +36,45 @@ function markTriggered(channelId, intentId) {
   setState(channelId, { triggered: { ...state.triggered, [intentId]: true } });
 }
 
-async function pingStaff(message, { title, description, color = RED_ALERT }) {
+/**
+ * Previent le staff en MP (pas dans le salon, pour ne pas polluer le
+ * ticket) : un message par membre ayant le role Staff, avec le lien direct
+ * vers le salon et le type de probleme detecte.
+ */
+async function dmStaff(message, { title, description }) {
   const staffRole = message.guild.roles.cache.find((r) => r.name === 'Staff');
-  await message.channel.send({
-    content: staffRole ? `${staffRole}` : undefined,
-    embeds: [brandedEmbed({ title, description, color })],
+  if (!staffRole) return;
+
+  await message.guild.members.fetch().catch(() => {});
+  const ticketUrl = `https://discord.com/channels/${message.guild.id}/${message.channel.id}`;
+
+  const embed = brandedEmbed({
+    title,
+    description: `${description}\n\n🔗 [Aller au ticket](${ticketUrl})`,
+    color: RED_ALERT,
   });
+
+  for (const member of staffRole.members.values()) {
+    if (member.id === message.author.id) continue; // ne pas se DM soi-meme (proprietaire du ticket qui est aussi staff)
+    member.send({ embeds: [embed] }).catch(() => {}); // ignore si MPs fermes
+  }
 }
 
-// --- "J'ai payé" : ~20 façons de le dire (regex sur texte normalisé : minuscules, sans accents) ---
+// --- "J'ai payé" : de nombreuses façons de le dire (regex sur texte normalisé : minuscules, sans accents) ---
 const PAYMENT_PATTERNS = [
   /\b(j.?ai|jai)\s*(deja\s*)?paye[r]?\b/, // j'ai payé / j'ai déjà payé / j'ai payer (faute courante)
   /\bc.?est\s*paye\b/, // c'est payé
-  /\bpaiement\s*(effectue|envoye|fait|ok|recu|termine)\b/, // paiement effectué/envoyé/fait/ok/reçu/terminé
-  /^paye\s*[!.]*$/, // "payé" tout seul
-  /^(c.?est\s*)?regle\s*[!.]*$/, // "réglé" / "c'est réglé"
+  /\bpaiement\s*(effectue|envoye|fait|ok|recu|termine|valide)\b/, // paiement effectué/envoyé/fait/ok/reçu/terminé/validé
+  /^paye\s*[!.?]*$/, // "payé" tout seul
+  /^(c.?est\s*)?regle\s*[!.?]*$/, // "réglé" / "c'est réglé"
   /\bj.?ai\s*regle\b/, // j'ai réglé
   /\b(j.?ai\s*envoye|envoye)\s*l.?argent\b/, // j'ai envoyé l'argent
   /\bargent\s*envoye\b/, // argent envoyé
   /\bj.?ai\s*fait\s*le\s*virement\b/, // j'ai fait le virement
-  /\bvirement\s*(effectue|fait)\b/, // virement effectué/fait
+  /\bvirement\s*(effectue|fait|envoye)\b/, // virement effectué/fait/envoyé
   /\bj.?ai\s*transfere\s*l.?argent\b/, // j'ai transféré l'argent
   /\btransfert\s*(effectue|fait)\b/, // transfert effectué
-  /\bpaypal\s*(ok|envoye|fait|c.?est\s*bon)\b/, // paypal ok/envoyé/fait
+  /\bpaypal\s*(ok|envoye|fait|c.?est\s*bon|recu)\b/, // paypal ok/envoyé/fait/reçu
   /\bvoila\s*(c.?est\s*)?(j.?ai\s*)?paye\b/, // voilà c'est payé / voilà j'ai payé
   /\bc.?est\s*bon\s*(j.?ai|c.?est)?\s*paye?\b/, // c'est bon j'ai payé
   /\bj.?ai\s*fini\s*(de\s*)?payer\b/, // j'ai fini de payer
@@ -68,45 +84,149 @@ const PAYMENT_PATTERNS = [
   /\b(as[\s-]*tu|avez[\s-]*vous)\s*recu\s*(le\s*)?paiement\b/, // as-tu reçu le paiement
   /\bpaiement\s*recu\s*de\s*mon\s*cote\b/, // paiement reçu de mon côté
   /\bmoney\s*sent\b/, // au cas où en anglais
+  /\bpayment\s*(sent|done)\b/, // en anglais
+  /\bje\s*viens\s*de\s*payer\b/, // je viens de payer
+  /\bje\s*viens\s*d.?envoyer\s*(l.?argent|le\s*paiement)\b/, // je viens d'envoyer l'argent/le paiement
+  /\bpaiement\s*envoye\s*de\s*mon\s*cote\b/, // paiement envoyé de mon côté
+  /\bc.?est\s*envoye\b/, // c'est envoyé
+  /\benvoye\s*!*$/, // "envoyé !" tout seul
+  /\bpaye\s*avec\s*paypal\b/, // payé avec paypal
+  /\d+[,.]?\d*\s*(euro|eur|€).{0,10}envoye/, // montant + envoyé (ex "5€ envoyés")
+  /\btu\s*peux\s*(check|verifier|regarder)\s*(le\s*)?paypal\b/, // tu peux vérifier paypal
+  /\bregarde\s*(ton\s*)?paypal\b/, // regarde ton paypal
 ];
 
-// --- ~20 categories de problemes, chacune avec ses propres mots-cles ---
+// --- Categories de problemes, chacune avec son propre message client + mots-cles ---
 const PROBLEM_CATEGORIES = [
-  { id: 'refund', label: '💸 Demande de remboursement', patterns: [/rembours/, /je\s*veux\s*(etre\s*)?rembourse/] },
-  { id: 'account_not_working', label: '🔑 Compte ne fonctionne pas', patterns: [/(ne\s*)?marche\s*pas/, /(ne\s*)?fonctionne\s*pas/, /mot\s*de\s*passe\s*incorrect/, /arrive\s*pas\s*a\s*me\s*connecter/, /login\s*(ne\s*)?marche\s*pas/] },
-  { id: 'account_taken', label: '👥 Compte déjà utilisé par quelqu\'un', patterns: [/compte\s*deja\s*pris/, /quelqu.?un\s*d.?autre\s*est\s*connecte/, /compte\s*utilise\s*par\s*quelqu.?un/] },
-  { id: 'account_banned', label: '🚫 Compte banni/suspendu', patterns: [/compte.{0,15}banni/, /compte.{0,15}suspendu/, /compte.{0,15}bloque/] },
-  { id: 'wrong_product', label: '📦 Mauvais produit reçu', patterns: [/pas\s*le\s*bon\s*produit/, /erreur\s*de\s*commande/, /c.?est\s*pas\s*ce\s*que\s*j.?ai\s*commande/] },
-  { id: 'no_delivery', label: '📭 Rien reçu', patterns: [/j.?ai\s*rien\s*recu/, /toujours\s*pas\s*livre/, /pas\s*de\s*compte\s*recu/, /j.?attends\s*toujours/] },
-  { id: 'scam_accusation', label: '⚠️ Accusation d\'arnaque', patterns: [/\barnaque\b/, /\bscam\b/, /vous\s*m.?avez\s*arnaque/, /c.?est\s*du\s*vol/] },
-  { id: 'no_staff_response', label: '⏳ Pas de réponse du staff', patterns: [/personne\s*ne\s*repond/, /ca\s*fait\s*longtemps\s*que\s*j.?attends/, /quelqu.?un\s*peut\s*m.?aider/] },
-  { id: 'billing_dispute', label: '🧾 Litige de facturation', patterns: [/facture\s*erronee/, /montant\s*incorrect/, /on\s*m.?a\s*trop\s*pris/, /double\s*paiement/, /paye\s*deux\s*fois/] },
-  { id: 'password_changed', label: '🔒 Mot de passe changé par l\'ancien propriétaire', patterns: [/mot\s*de\s*passe\s*a\s*change/, /ancien\s*proprietaire\s*a\s*repris/, /je\s*n.?ai\s*plus\s*acces/] },
-  { id: 'twofa_issue', label: '📱 Problème de double authentification', patterns: [/\b2fa\b/, /double\s*authentification/, /code\s*de\s*verification/, /authentification\s*a\s*deux\s*facteurs/] },
-  { id: 'region_lock', label: '🌍 Blocage régional', patterns: [/region\s*bloquee/, /pas\s*disponible\s*dans\s*mon\s*pays/, /erreur\s*de\s*region/] },
-  { id: 'not_as_described', label: '📋 Produit différent de la description', patterns: [/pas\s*ce\s*qui\s*etait\s*decrit/, /produit\s*different\s*de\s*l.?annonce/] },
-  { id: 'cancel_order', label: '❌ Demande d\'annulation', patterns: [/annuler\s*ma\s*commande/, /je\s*veux\s*annuler/, /\bannulation\b/] },
-  { id: 'modify_order', label: '✏️ Demande de modification de commande', patterns: [/changer\s*ma\s*commande/, /modifier\s*ma\s*commande/, /je\s*veux\s*changer\s*de\s*produit/] },
-  { id: 'website_bug', label: '🐛 Bug signalé sur le site', patterns: [/bug\s*sur\s*le\s*site/, /erreur\s*sur\s*le\s*site/, /le\s*site\s*(ne\s*)?marche\s*pas/, /probleme\s*technique/] },
-  { id: 'discord_role_missing', label: '🎭 Rôle Discord manquant', patterns: [/j.?ai\s*pas\s*mon\s*role/, /role\s*premium\s*pas\s*applique/, /je\s*suis\s*pas\s*verifie/] },
-  { id: 'boost_reward_missing', label: '💎 Récompense de boost non reçue', patterns: [/pas\s*recu\s*ma\s*recompense/, /recompense\s*boost\s*pas\s*recue/] },
-  { id: 'slow_delivery', label: '🐌 Livraison trop lente', patterns: [/(c.?est|tres)\s*long/, /ca\s*prend\s*du\s*temps/, /toujours\s*pas\s*recu\s*apres/] },
-  { id: 'general_complaint', label: '😠 Insatisfaction générale', patterns: [/pas\s*content/, /insatisfait/, /tres\s*decu/, /mauvaise\s*experience/] },
+  {
+    id: 'refund',
+    label: '💸 Demande de remboursement',
+    reply: "Ta demande de remboursement a été transmise au staff en message privé. Pour accélérer le traitement, prépare le numéro de commande et la raison souhaitée.",
+    patterns: [/rembours/, /je\s*veux\s*(etre\s*)?rembourse/, /rendre\s*mon\s*argent/, /recuperer\s*mon\s*argent/, /je\s*veux\s*etre\s*rembourse/],
+  },
+  {
+    id: 'account_not_working',
+    label: '🔑 Compte ne fonctionne pas',
+    reply: "Le staff a été notifié en message privé et va vérifier ton compte. En attendant, vérifie bien les identifiants (espaces/majuscules) et ta connexion internet.",
+    patterns: [/(ne\s*)?marche\s*pas/, /(ne\s*)?fonctionne\s*pas/, /mot\s*de\s*passe\s*incorrect/, /arrive\s*pas\s*a\s*me\s*connecter/, /login\s*(ne\s*)?marche\s*pas/, /identifiants?\s*(invalides?|faux|incorrects?)/, /impossible\s*de\s*me\s*connecter/, /connexion\s*(refusee|impossible)/],
+  },
+  {
+    id: 'account_taken',
+    label: '👥 Compte déjà utilisé par quelqu\'un',
+    reply: "C'est noté, le staff a été notifié en message privé et va vérifier/sécuriser l'accès à ton compte. Merci de patienter.",
+    patterns: [/compte\s*deja\s*pris/, /quelqu.?un\s*d.?autre\s*est\s*connecte/, /compte\s*utilise\s*par\s*quelqu.?un/, /quelqu.?un\s*d.?autre\s*a\s*mon\s*compte/, /partage\s*avec\s*quelqu.?un/],
+  },
+  {
+    id: 'account_banned',
+    label: '🚫 Compte banni/suspendu',
+    reply: "Le staff a été notifié en message privé et va regarder pourquoi le compte est banni/suspendu, avec une solution (remplacement ou remboursement selon le cas).",
+    patterns: [/compte.{0,15}banni/, /compte.{0,15}suspendu/, /compte.{0,15}bloque/, /compte.{0,15}desactive/, /compte.{0,15}ferme\b/],
+  },
+  {
+    id: 'wrong_product',
+    label: '📦 Mauvais produit reçu',
+    reply: "Merci de préciser le produit commandé vs celui reçu — le staff a été notifié en message privé et va corriger ça rapidement.",
+    patterns: [/pas\s*le\s*bon\s*produit/, /erreur\s*de\s*commande/, /c.?est\s*pas\s*ce\s*que\s*j.?ai\s*commande/, /c.?est\s*pas\s*le\s*bon\s*(jeu|compte)/, /vous\s*vous\s*etes\s*trompes/],
+  },
+  {
+    id: 'no_delivery',
+    label: '📭 Rien reçu',
+    reply: "Le staff a été notifié en message privé et va vérifier l'état de ta commande pour te livrer au plus vite.",
+    patterns: [/j.?ai\s*rien\s*recu/, /toujours\s*pas\s*livre/, /pas\s*de\s*compte\s*recu/, /j.?attends\s*toujours/, /aucune\s*livraison/, /je\s*n.?ai\s*pas\s*recu\s*(mon|ma|le|la)/],
+  },
+  {
+    id: 'scam_accusation',
+    label: '⚠️ Accusation d\'arnaque',
+    reply: "On comprend ta frustration. streamIN livre toutes ses commandes normalement, un membre du staff a été notifié en priorité en message privé pour regarder ton cas.",
+    patterns: [/\barnaqu/, /\bscam\b/, /c.?est\s*du\s*vol/, /vous\s*etes\s*des\s*voleurs/, /vous\s*volez\s*(les\s*gens|mon\s*argent)/],
+  },
+  {
+    id: 'no_staff_response',
+    label: '⏳ Pas de réponse du staff',
+    reply: "Désolé pour l'attente — un membre du staff vient d'être notifié en priorité en message privé et va te répondre rapidement.",
+    patterns: [/personne\s*ne\s*repond/, /ca\s*fait\s*longtemps\s*que\s*j.?attends/, /quelqu.?un\s*peut\s*m.?aider/, /y\s*a\s*quelqu.?un/, /vous\s*etes\s*la\s*\?/, /reponse\s*svp/],
+  },
+  {
+    id: 'billing_dispute',
+    label: '🧾 Litige de facturation',
+    reply: "Le staff a été notifié en message privé et va vérifier le montant prélevé et corriger toute erreur de facturation.",
+    patterns: [/facture\s*erronee/, /montant\s*incorrect/, /on\s*m.?a\s*trop\s*pris/, /double\s*paiement/, /paye\s*deux\s*fois/, /preleve\s*deux\s*fois/, /mauvais\s*montant/],
+  },
+  {
+    id: 'password_changed',
+    label: '🔒 Mot de passe changé par l\'ancien propriétaire',
+    reply: "Le staff a été notifié en message privé et va vérifier ça, avec un compte de remplacement si nécessaire.",
+    patterns: [/mot\s*de\s*passe\s*a\s*change/, /ancien\s*proprietaire\s*a\s*repris/, /je\s*n.?ai\s*plus\s*acces/, /mot\s*de\s*passe\s*ne\s*marche\s*plus/],
+  },
+  {
+    id: 'twofa_issue',
+    label: '📱 Problème de double authentification',
+    reply: "Le staff a été notifié en message privé et va t'aider à gérer la double authentification du compte.",
+    patterns: [/\b2fa\b/, /double\s*authentification/, /code\s*de\s*verification/, /authentification\s*a\s*deux\s*facteurs/, /demande\s*un\s*code/],
+  },
+  {
+    id: 'region_lock',
+    label: '🌍 Blocage régional',
+    reply: "Le staff a été notifié en message privé et va vérifier la compatibilité régionale du compte.",
+    patterns: [/region\s*bloquee/, /pas\s*disponible\s*dans\s*mon\s*pays/, /erreur\s*de\s*region/, /region\s*non\s*supportee/],
+  },
+  {
+    id: 'not_as_described',
+    label: '📋 Produit différent de la description',
+    reply: "Merci de préciser la différence constatée — le staff a été notifié en message privé et va vérifier.",
+    patterns: [/pas\s*ce\s*qui\s*etait\s*decrit/, /produit\s*different\s*de\s*l.?annonce/, /correspond\s*pas\s*a\s*la\s*description/],
+  },
+  {
+    id: 'cancel_order',
+    label: '❌ Demande d\'annulation',
+    reply: "Ta demande d'annulation a été transmise au staff en message privé. Si le paiement a déjà été effectué, un remboursement pourra être étudié.",
+    patterns: [/annuler\s*ma\s*commande/, /je\s*veux\s*annuler/, /\bannulation\b/, /finalement\s*je\s*veux\s*pas/],
+  },
+  {
+    id: 'modify_order',
+    label: '✏️ Demande de modification de commande',
+    reply: "Le staff a été notifié en message privé pour ajuster ta commande, précise le produit voulu à la place.",
+    patterns: [/changer\s*ma\s*commande/, /modifier\s*ma\s*commande/, /je\s*veux\s*changer\s*de\s*produit/, /je\s*veux\s*plutot/],
+  },
+  {
+    id: 'website_bug',
+    label: '🐛 Bug signalé sur le site',
+    reply: "Merci du signalement ! Le staff a été notifié en message privé et va regarder le bug au plus vite.",
+    patterns: [/bug\s*sur\s*le\s*site/, /erreur\s*sur\s*le\s*site/, /le\s*site\s*(ne\s*)?marche\s*pas/, /probleme\s*technique/, /le\s*site\s*plante/, /le\s*site\s*bug/],
+  },
+  {
+    id: 'discord_role_missing',
+    label: '🎭 Rôle Discord manquant',
+    reply: "Le staff a été notifié en message privé et va vérifier/attribuer le bon rôle rapidement.",
+    patterns: [/j.?ai\s*pas\s*mon\s*role/, /role\s*premium\s*pas\s*applique/, /je\s*suis\s*pas\s*verifie/, /pas\s*le\s*role\s*booster/],
+  },
+  {
+    id: 'boost_reward_missing',
+    label: '💎 Récompense de boost non reçue',
+    reply: "Le staff a été notifié en message privé et va vérifier tes boosts cumulés pour te livrer ta récompense (compte Steam ou streaming au choix).",
+    patterns: [/pas\s*recu\s*ma\s*recompense/, /recompense\s*boost\s*pas\s*recue/, /j.?ai\s*boost.{0,10}rien\s*recu/],
+  },
+  {
+    id: 'slow_delivery',
+    label: '🐌 Livraison trop lente',
+    reply: "Désolé pour le délai — le staff a été notifié en priorité en message privé pour accélérer ta livraison.",
+    patterns: [/(c.?est|tres)\s*long/, /ca\s*prend\s*du\s*temps/, /toujours\s*pas\s*recu\s*apres/, /(depuis|ca\s*fait)\s*(des\s*)?heures?/],
+  },
+  {
+    id: 'general_complaint',
+    label: '😠 Insatisfaction générale',
+    reply: "On est désolé que ton expérience ne soit pas à la hauteur. Le staff a été notifié en message privé et va te recontacter pour trouver une solution.",
+    patterns: [/pas\s*content/, /insatisfait/, /tres\s*decu/, /mauvaise\s*experience/, /je\s*suis\s*enerve/, /c.?est\s*n.?importe\s*quoi/],
+  },
 ];
 
 const problemHandler = (category) => async (message) => {
   await message.reply({
-    embeds: [
-      brandedEmbed({
-        title: '⚠️ Signalement pris en compte',
-        description: "Le staff a été notifié. Peux-tu préciser : numéro de commande, produit concerné, et si possible une capture d'écran du problème ?",
-        color: RED_ALERT,
-      }),
-    ],
+    embeds: [brandedEmbed({ title: `⚠️ ${category.label}`, description: category.reply, color: RED_ALERT })],
   });
-  await pingStaff(message, {
+  await dmStaff(message, {
     title: `🚨 ${category.label}`,
-    description: `${message.author} a signalé ce problème dans ce ticket, merci de vérifier.`,
+    description: `${message.author} (${message.author.tag}) a signalé ce problème dans son ticket.`,
   });
   logAction(message.guild, 'TICKET_ISSUE_FLAGGED', { Salon: `${message.channel}`, Client: `${message.author} (${message.author.id})`, Type: category.label });
 };
@@ -128,7 +248,7 @@ const INTENTS = [
             description: [
               '**Merci de nous envoyer une capture d\'écran de la confirmation PayPal directement dans ce salon** (photo/capture, pas juste du texte).',
               '',
-              'Dès que la preuve est reçue, le staff est notifié automatiquement pour vérifier et valider ta commande.',
+              'Dès que la preuve est reçue, le staff est notifié automatiquement en message privé pour vérifier et valider ta commande.',
             ].join('\n'),
             color: GOLD_BOOST,
           }),
@@ -143,7 +263,7 @@ const INTENTS = [
   })),
   {
     id: 'delivery_time',
-    match: (t) => /combien\s*de\s*temps/.test(t) || /\bdelai\b/.test(t) || /(quand|c.?est\s*quand).*(recevoir|recois|livr)/.test(t),
+    match: (t) => /combien\s*de\s*temps/.test(t) || /\bdelai\b/.test(t) || /(quand|c.?est\s*quand).*(recevoir|recois|livr)/.test(t) || /c.?est\s*rapide\s*\?/.test(t),
     handle: async (message) => {
       await message.reply({
         embeds: [
@@ -157,7 +277,7 @@ const INTENTS = [
   },
   {
     id: 'how_to_pay',
-    match: (t) => /comment\s*(je\s*)?(pay|paie)/.test(t) || /quel\s*(est\s*le\s*)?prix/.test(t) || /combien\s*(ca\s*)?coute/.test(t),
+    match: (t) => /comment\s*(je\s*)?(pay|paie)/.test(t) || /quel\s*(est\s*le\s*)?prix/.test(t) || /combien\s*(ca\s*)?coute/.test(t) || /c.?est\s*combien/.test(t),
     handle: async (message) => {
       await message.reply({
         embeds: [
@@ -193,10 +313,9 @@ async function handleTicketAutomation(message) {
     if (hasImage) {
       setState(message.channel.id, { awaitingProof: false, proofReceived: true });
       await message.react('✅').catch(() => {});
-      await pingStaff(message, {
+      await dmStaff(message, {
         title: '📨 Preuve de paiement envoyée',
-        description: `${message.author} a envoyé une preuve de paiement dans ce ticket. **Merci de vérifier sur PayPal et de valider la commande** (dashboard admin ou marquage manuel).`,
-        color: GOLD_BOOST,
+        description: `${message.author} (${message.author.tag}) a envoyé une preuve de paiement dans son ticket. **Merci de vérifier sur PayPal et de valider la commande** (dashboard admin ou marquage manuel).`,
       });
       logAction(message.guild, 'PAYMENT_PROOF_SUBMITTED', { Salon: `${message.channel}`, Client: `${message.author} (${message.author.id})` });
       return;

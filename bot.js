@@ -169,8 +169,29 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 
 // --- Serveur Express minimal (keep-alive Render + healthcheck) ---
 const app = express();
+app.use(express.json({ limit: '1mb' }));
 app.get('/', (_req, res) => res.send('Vercell bot en ligne ✅'));
 app.get('/health', (_req, res) => res.json({ status: 'ok', guilds: client.guilds.cache.size, uptime: process.uptime() }));
+
+// --- Rendu de carte PNG pour le site (annonces boutique) ---
+// Le site (Vercel) n'arrive pas a faire tourner @napi-rs/canvas dans sa
+// fonction serveur bundlee (binaire natif perdu par le bundler) alors que
+// ce bot, process Node classique sans bundler, le fait deja sans souci
+// pour /stock et /order_lookup. Plutot que de se battre avec le bundler du
+// site, il appelle ce endpoint pour generer les cartes a sa place.
+app.post('/internal/announcement-card', async (req, res) => {
+  if (!process.env.INTERNAL_SECRET || req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  try {
+    const { renderAnnouncementCard } = require('./utils/cards/announcementCard');
+    const png = await renderAnnouncementCard(req.body || {});
+    res.type('png').send(png);
+  } catch (err) {
+    console.error('Erreur /internal/announcement-card:', err);
+    res.status(500).json({ error: 'render_failed' });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌍 Serveur web (healthcheck) lancé sur le port ${PORT}`));

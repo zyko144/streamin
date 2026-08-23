@@ -60,8 +60,30 @@ async function dmStaff(message, { title, description }) {
     color: RED_ALERT,
   });
 
+  let successCount = 0;
   for (const member of recipients.values()) {
-    member.send({ embeds: [embed] }).catch(() => {}); // ignore si MPs fermes
+    try {
+      await member.send({ embeds: [embed] });
+      successCount++;
+    } catch (err) {
+      // Cause la plus frequente : le destinataire a desactive "Autoriser les
+      // messages prives des membres de ce serveur" dans ses parametres de
+      // confidentialite Discord (erreur 50007). On log pour pouvoir
+      // diagnostiquer depuis les logs Render.
+      console.error(`⚠️  Impossible de DM ${member.user.tag} (${member.id}):`, err.message);
+    }
+  }
+
+  // Filet de securite : si AUCUN MP n'est parti (tout le monde a les MPs
+  // fermes, ou aucun destinataire trouve), on poste quand meme dans le
+  // salon de logs staff-only pour ne pas perdre l'alerte.
+  if (successCount === 0) {
+    const logsChannel = message.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === '📝・logs');
+    if (logsChannel?.isTextBased()) {
+      await logsChannel
+        .send({ content: '⚠️ Aucun MP n\'a pu être envoyé (MPs fermés ?) — alerte de secours :', embeds: [embed] })
+        .catch((err) => console.error('⚠️  Impossible de poster le filet de securite dans #logs:', err.message));
+    }
   }
 }
 

@@ -4,7 +4,7 @@ Bot du serveur Discord streamIN : configuration automatique du serveur, système
 
 ## Mise en route
 
-1. **Portail développeur Discord** ([discord.com/developers/applications](https://discord.com/developers/applications)) → application **streamIN** → onglet **Bot** → vérifie que **SERVER MEMBERS INTENT** est activé (obligatoire). Si le token a pu fuiter à un moment, régénère-le.
+1. **Portail développeur Discord** ([discord.com/developers/applications](https://discord.com/developers/applications)) → application **streamIN** → onglet **Bot** → vérifie que **SERVER MEMBERS INTENT** et **MESSAGE CONTENT INTENT** sont activés (obligatoires — le second sert à l'automatisation des tickets ci-dessous). Si le token a pu fuiter à un moment, régénère-le.
 2. Le bot est déjà membre du serveur **StreamIN** avec les droits nécessaires. Pour un autre serveur, invite-le avec :
 
    ```
@@ -31,6 +31,12 @@ Rôles : `Staff`, `✅ Client Vérifié`, `💎 Booster VIP`.
 
 - **`/setup`** (admin) : configuration complète et idempotente du serveur (voir ci-dessus).
 - **Tickets** : bouton "🎫 Ouvrir un ticket" → salon privé (client + Staff), menu Prendre en charge / Fermer. Commandes `/ticket_add`, `/ticket_remove`, `/ticket_close`. La déduplication vérifie l'état réel des salons Discord (pas seulement un fichier local), donc pas de doublon même si `db.json` a été perdu.
+- **Automatisation des tickets** (`utils/ticketAutomation.js`) : détecte des phrases courantes dans les messages d'un ticket (mots-clés, pas d'IA externe) et réagit automatiquement — une seule fois par intention et par ticket, jamais sur les messages du staff :
+  - *"j'ai payé"* → demande une capture d'écran de la preuve PayPal ; dès qu'une image est envoyée, le bot ping `@Staff` avec "preuve reçue, à vérifier" (le bot ne peut pas vérifier lui-même un paiement PayPal, il alerte juste le staff).
+  - *"remboursement" / "ça marche pas" / "problème"* → ping `@Staff` immédiat + demande des précisions (n° commande, capture).
+  - *"combien de temps" / "délai"* → réponse automatique sur le délai de livraison.
+  - *"comment payer" / "quel prix"* → réponse automatique avec le lien boutique et le rappel PayPal Amis&Famille.
+  - Facile à étendre : ajoute une entrée dans le tableau `INTENTS` de `utils/ticketAutomation.js` (regex de détection + réponse).
 - **Vérification** : bouton "✅ Je confirme avoir lu" dans `📜・règlement` → attribue le rôle `✅ Client Vérifié`.
 - **Boosts** : à chaque boost, remerciement dans `🚀・boost-remerciements` + rôle 💎 Booster VIP automatique. Tous les 2 boosts cumulés pour un même membre → ticket cadeau auto-ouvert (1 compte Steam ou streaming au choix). Le palier est rappelé en message épinglé dans le salon boost.
 - **Invitations** : à l'arrivée d'un membre, `👋・bienvenue` affiche qui a rejoint et par quelle invitation (code + inviteur), en plus du nombre de membres.

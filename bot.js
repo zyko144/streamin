@@ -11,6 +11,7 @@ const { TICKET_PANEL_BUTTON_ID } = require('./utils/ticketPanel');
 const { VERIFY_BUTTON_ID } = require('./utils/verify');
 const { handleBoostStarted } = require('./utils/boosts');
 const { cacheGuildInvites, bumpInviteCache, dropInviteCache, resolveUsedInvite } = require('./utils/invites');
+const { handleTicketAutomation } = require('./utils/ticketAutomation');
 const { brandedEmbed, RED_ALERT, GREEN_SUCCESS } = require('./utils/theme');
 const { logAction } = require('./utils/logs');
 
@@ -25,7 +26,13 @@ process.on('unhandledRejection', (err) => console.error('⚠️  unhandledReject
 process.on('uncaughtException', (err) => console.error('⚠️  uncaughtException:', err));
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildInvites],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.commands = new Collection();
@@ -118,6 +125,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const payload = { content: "❌ Une erreur est survenue.", ephemeral: true };
     if (interaction.deferred || interaction.replied) interaction.followUp(payload).catch(() => {});
     else interaction.reply(payload).catch(() => {});
+  }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  try {
+    await handleTicketAutomation(message);
+  } catch (err) {
+    console.error('Erreur automatisation ticket:', err);
   }
 });
 

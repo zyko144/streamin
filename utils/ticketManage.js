@@ -1,6 +1,7 @@
 const { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { readDatabase, writeDatabase } = require('./db');
 const { RED_ALERT, FOOTER } = require('./theme');
+const { logAction } = require('./logs');
 
 const CLAIM_FIELD_NAME = '🙋 Pris en charge';
 
@@ -67,6 +68,7 @@ async function handleTicketManage(interaction) {
       .setDescription('Ce salon sera supprimé dans quelques secondes...')
       .setFooter(FOOTER);
     await interaction.update({ embeds: [closingEmbed], components: [] });
+    logAction(interaction.guild, 'TICKET_CLOSED', { Salon: interaction.channel.name, Par: `${interaction.user} (${interaction.user.id})` });
     setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
   }
 }

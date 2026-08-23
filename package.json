@@ -6,7 +6,8 @@
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "deploy": "node deploy-commands.js"
+    "deploy": "node deploy-commands.js",
+    "setup:server": "node run-setup-once.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

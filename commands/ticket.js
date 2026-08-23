@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { brandedEmbed, RED_ALERT, GREEN_SUCCESS } = require('../utils/theme');
 const { setOpenTicketId } = require('../utils/tickets');
+const { logAction } = require('../utils/logs');
 
 module.exports = [
   new SlashCommandBuilder()
@@ -46,9 +47,10 @@ module.exports.execute = async (interaction) => {
   }
 
   if (commandName === 'ticket_close') {
-    const ownerId = channel.topic.split(':')[1];
-    if (ownerId) setOpenTicketId(guild.id, ownerId, null);
+    const [, ownerId, namePrefix] = channel.topic.split(':');
+    if (ownerId) setOpenTicketId(guild.id, ownerId, null, namePrefix || 'ticket');
     await interaction.reply({ embeds: [brandedEmbed({ title: '🔒 Fermeture du ticket', description: 'Ce ticket sera fermé dans 5 secondes...', color: RED_ALERT })] });
+    logAction(guild, 'TICKET_CLOSED', { Salon: channel.name, Par: `${interaction.user} (${interaction.user.id})` });
     setTimeout(() => channel.delete().catch(() => {}), 5000);
   }
 };

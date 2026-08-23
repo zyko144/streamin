@@ -5,10 +5,11 @@
 // booster de ce membre dans le temps, ce qui est le proxy le plus honnete et
 // implementable sans API non documentee.
 
-const { ChannelType, PermissionFlagsBits } = require('discord.js');
+const { ChannelType } = require('discord.js');
 const { readDatabase, writeDatabase } = require('./db');
 const { brandedEmbed, GOLD_BOOST, LOGO_URL } = require('./theme');
 const { createTicket } = require('./tickets');
+const { logAction } = require('./logs');
 
 const REWARD_EVERY = 2;
 
@@ -31,7 +32,7 @@ async function handleBoostStarted(oldMember, newMember) {
   const guild = newMember.guild;
   const count = incrementBoostCount(guild.id, newMember.id);
 
-  const boostChannel = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === 'boost-remerciements');
+  const boostChannel = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === '🚀・boost-remerciements');
   const boosterRole = guild.roles.cache.find((r) => r.name === '💎 Booster VIP');
 
   if (boosterRole && !newMember.roles.cache.has(boosterRole.id)) {
@@ -54,6 +55,8 @@ async function handleBoostStarted(oldMember, newMember) {
       .catch(() => {});
   }
 
+  logAction(guild, 'BOOST_STARTED', { Membre: `${newMember} (${newMember.id})`, 'Compteur cumulé': `${count}` });
+
   if (count % REWARD_EVERY === 0) {
     const staffRole = guild.roles.cache.find((r) => r.name === 'Staff');
     const boostCat = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === '🚀 BOOST');
@@ -64,6 +67,7 @@ async function handleBoostStarted(oldMember, newMember) {
       title: '🎁 Récompense de boost débloquée !',
       description: `${newMember}, merci pour tes ${count} boosts cumulés sur streamIN ! Tu débloques **1 compte Steam ou 1 compte streaming au choix**, gratuit. Précise ici lequel tu veux, le staff te le livre.`,
     }).catch(() => null);
+    logAction(guild, 'BOOST_REWARD_GRANTED', { Membre: `${newMember} (${newMember.id})`, Palier: `${count}` });
     return result;
   }
   return null;

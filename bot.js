@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, ChannelType } = require('discord.js');
 const express = require('express');
 require('dotenv').config();
 const fs = require('fs');
@@ -8,9 +8,11 @@ const { initDatabase } = require('./utils/db');
 const { handleTicketManage } = require('./utils/ticketManage');
 const { createTicket } = require('./utils/tickets');
 const { TICKET_PANEL_BUTTON_ID } = require('./utils/ticketPanel');
+const { VERIFY_BUTTON_ID } = require('./utils/verify');
 const { handleBoostStarted } = require('./utils/boosts');
-const { brandedEmbed, RED_ALERT } = require('./utils/theme');
-const { ChannelType } = require('discord.js');
+const { cacheGuildInvites, bumpInviteCache, dropInviteCache, resolveUsedInvite } = require('./utils/invites');
+const { brandedEmbed, RED_ALERT, GREEN_SUCCESS } = require('./utils/theme');
+const { logAction } = require('./utils/logs');
 
 if (!process.env.TOKEN) {
   console.error('❌ TOKEN manquant dans .env');
@@ -23,7 +25,7 @@ process.on('unhandledRejection', (err) => console.error('⚠️  unhandledReject
 process.on('uncaughtException', (err) => console.error('⚠️  uncaughtException:', err));
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildInvites],
 });
 
 client.commands = new Collection();
@@ -36,11 +38,39 @@ for (const file of fs.readdirSync(commandsPath).filter((f) => f.endsWith('.js'))
   }
 }
 
-client.once(Events.ClientReady, (c) => {
+client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Connecté en tant que ${c.user.tag} (${c.guilds.cache.size} serveur(s))`);
+  for (const guild of c.guilds.cache.values()) {
+    await cacheGuildInvites(guild);
+  }
 });
 
 client.on(Events.Error, (err) => console.error('⚠️  Erreur client Discord:', err));
+client.on(Events.InviteCreate, bumpInviteCache);
+client.on(Events.InviteDelete, dropInviteCache);
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    const bienvenue = member.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === '👋・bienvenue');
+    if (!bienvenue?.isTextBased()) return;
+
+    const used = await resolveUsedInvite(member.guild);
+    const inviterLine = used?.inviter ? `Invité par **${used.inviter.tag}** (code \`${used.code}\`, ${used.uses} utilisation(s))` : "Invitation non déterminée (lien vanity, widget, ou permission manquante).";
+
+    await bienvenue.send({
+      content: `${member}`,
+      embeds: [
+        brandedEmbed({
+          title: `👋 Bienvenue ${member.user.username} !`,
+          description: `${member} vient de rejoindre streamIN — membre n°${member.guild.memberCount}.\n\n${inviterLine}`,
+          thumbnail: member.user.displayAvatarURL({ size: 256 }),
+        }),
+      ],
+    });
+  } catch (err) {
+    console.error('Erreur guildMemberAdd (bienvenue/invite):', err);
+  }
+});
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
@@ -53,12 +83,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === TICKET_PANEL_BUTTON_ID) {
       const supportCat = interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === '🎫 SUPPORT');
       const staffRole = interaction.guild.roles.cache.find((r) => r.name === 'Staff');
-      const logChannel = interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === 'logs-tickets');
 
       const result = await createTicket(interaction.guild, interaction.member, {
         category: supportCat || null,
         staffRoleId: staffRole?.id,
-        logChannelId: logChannel?.id,
       });
 
       if (!result) {
@@ -68,6 +96,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Ticket déjà ouvert', description: `Tu as déjà un ticket ouvert : ${result.existing}`, color: RED_ALERT })], ephemeral: true });
       }
       return interaction.reply({ embeds: [brandedEmbed({ title: '✅ Ticket créé', description: `Ton ticket a été créé : ${result.channel}` })], ephemeral: true });
+    }
+
+    if (interaction.isButton() && interaction.customId === VERIFY_BUTTON_ID) {
+      const verifiedRole = interaction.guild.roles.cache.find((r) => r.name === '✅ Client Vérifié');
+      if (!verifiedRole) {
+        return interaction.reply({ content: "❌ Rôle de vérification introuvable, relance /setup.", ephemeral: true });
+      }
+      if (interaction.member.roles.cache.has(verifiedRole.id)) {
+        return interaction.reply({ content: '✅ Tu es déjà vérifié !', ephemeral: true });
+      }
+      await interaction.member.roles.add(verifiedRole);
+      return interaction.reply({ embeds: [brandedEmbed({ title: '✅ Vérifié !', description: `Bienvenue, tu as maintenant accès à tout le serveur.`, color: GREEN_SUCCESS })], ephemeral: true });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_manage') {

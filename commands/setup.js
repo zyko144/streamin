@@ -7,7 +7,7 @@ const { logAction } = require('../utils/logs');
 module.exports = [
   new SlashCommandBuilder()
     .setName('setup')
-    .setDescription("Configure (ou reconfigure) le serveur streamIN : roles, salons, permissions, panneau de tickets.")
+    .setDescription("Configure (ou reconfigure) le serveur Vercell : roles, salons, permissions, panneau de tickets.")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setDMPermission(false),
 ];

@@ -42,7 +42,7 @@ async function findOrCreateChannel(guild, name, { parent, overwrites, presetId }
 }
 
 /**
- * Configuration complete et idempotente du serveur streamIN.
+ * Configuration complete et idempotente du serveur Vercell.
  * Rejouable sans creer de doublons (recherche par nom avant creation,
  * messages-cles postes une seule fois via un flag en base).
  *
@@ -56,7 +56,7 @@ async function runSetup(guild) {
 
   // --- Roles ---
   const staffRole = await findOrCreateRole(guild, 'Staff', {
-    color: 0x3b82f6,
+    color: 0xffffff,
     hoist: true,
     permissions: [
       PermissionFlagsBits.ManageChannels,
@@ -67,13 +67,13 @@ async function runSetup(guild) {
   });
   summary.push(`✅ Rôle ${staffRole}`);
 
-  const verifiedRole = await findOrCreateRole(guild, '✅ Client Vérifié', { color: 0x22c55e, hoist: false, permissions: [] });
+  const verifiedRole = await findOrCreateRole(guild, '✅ Client Vérifié', { color: 0xd4d4d4, hoist: false, permissions: [] });
   summary.push(`✅ Rôle ${verifiedRole}`);
 
   const boosterRole = await findOrCreateRole(guild, '💎 Booster VIP', { color: GOLD_BOOST, hoist: true, permissions: [] });
   summary.push(`✅ Rôle ${boosterRole}`);
 
-  const rewardRole = await findOrCreateRole(guild, '🎁 Récompense Boost', { color: 0xffd700, hoist: true, permissions: [] });
+  const rewardRole = await findOrCreateRole(guild, '🎁 Récompense Boost', { color: 0x8a8a8a, hoist: true, permissions: [] });
   summary.push(`✅ Rôle ${rewardRole}`);
 
   const readOnly = (extra = []) => [
@@ -126,7 +126,7 @@ async function runSetup(guild) {
     await ouvrirTicket.send({
       embeds: [
         brandedEmbed({
-          title: '🎫 Support streamIN',
+          title: '🎫 Support Vercell',
           description: "Besoin d'aide, d'une livraison de commande ou d'une question ? Clique sur le bouton pour ouvrir un ticket privé avec le staff.",
           image: LOGO_URL,
         }),
@@ -152,7 +152,7 @@ async function runSetup(guild) {
       embeds: [
         brandedEmbed({
           title: '🚀 Récompenses de boost',
-          description: `Merci de soutenir streamIN ! Boost ce serveur pour débloquer ${boosterRole} et des avantages exclusifs.\n\n🎁 **2 boosts cumulés = 1 compte Steam au choix OU 1 compte streaming au choix, gratuit !**\n\nDès que tu atteins le palier, un ticket cadeau s'ouvre automatiquement pour que tu choisisses ton compte.`,
+          description: `Merci de soutenir Vercell ! Boost ce serveur pour débloquer ${boosterRole} et des avantages exclusifs.\n\n🎁 **2 boosts cumulés = 1 compte Steam au choix OU 1 compte streaming au choix, gratuit !**\n\nDès que tu atteins le palier, un ticket cadeau s'ouvre automatiquement pour que tu choisisses ton compte.`,
           color: GOLD_BOOST,
           image: LOGO_URL,
         }),
@@ -174,7 +174,7 @@ async function runSetup(guild) {
     await reglement.send({
       embeds: [
         brandedEmbed({
-          title: '📜 Règlement streamIN',
+          title: '📜 Règlement Vercell',
           description: [
             '**1.** Respecte les autres membres, pas de propos haineux, discriminatoires ou NSFW.',
             "**2.** Pas de spam, pas de pub non autorisée, pas de scam.",
@@ -225,8 +225,8 @@ async function runSetup(guild) {
   let webhookUrl = null;
   try {
     const existingWebhooks = await ordersChannel.fetchWebhooks();
-    let webhook = existingWebhooks.find((w) => w.name === 'streamIN Commandes');
-    if (!webhook) webhook = await ordersChannel.createWebhook({ name: 'streamIN Commandes' });
+    let webhook = existingWebhooks.find((w) => w.name === 'Vercell Commandes');
+    if (!webhook) webhook = await ordersChannel.createWebhook({ name: 'Vercell Commandes' });
     webhookUrl = webhook.url;
   } catch {
     // Permission "Gerer les webhooks" manquante, laisse null : le setup indique la marche a suivre manuelle.
@@ -237,7 +237,7 @@ async function runSetup(guild) {
     await bienvenue.send({
       embeds: [
         brandedEmbed({
-          title: 'Bienvenue sur streamIN 🎬',
+          title: 'Bienvenue sur Vercell 🎬',
           description: `Comptes streaming, gaming et VPN premium, livraison instantanée.\n\n🛒 Boutique : https://shop-plus-nu.vercel.app/\n🎫 Support : ${ouvrirTicket}\n🚀 Deviens ${boosterRole} en boostant le serveur pour des récompenses exclusives !\n\nChaque nouvel arrivant sera annoncé ici automatiquement 👋`,
           image: LOGO_URL,
         }),

@@ -12,7 +12,7 @@ const TICKET_CATEGORIES = [
     namePrefix: 'commande',
     welcome: (member) =>
       [
-        `Bienvenue ${member} ! Tu viens de passer (ou veux passer) une commande sur streamIN.`,
+        `Bienvenue ${member} ! Tu viens de passer (ou veux passer) une commande sur Vercell.`,
         '',
         "**Merci de préciser :**",
         '• Le(s) produit(s) commandé(s)',

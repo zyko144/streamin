@@ -17,7 +17,7 @@ function logAction(guild, action, fields = {}) {
     title: `📝 ${action}`,
     description: Object.entries(fields).map(([k, v]) => `**${k}:** ${v}`).join('\n'),
     footer: false,
-  }).setFooter({ text: `streamIN • ${time}` });
+  }).setFooter({ text: `Vercell • ${time}` });
   channel.send({ embeds: [embed] }).catch(() => {});
 }
 

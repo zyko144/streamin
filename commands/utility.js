@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { brandedEmbed, RED } = require('../utils/theme');
+const { renderStockPng } = require('../utils/cards/stockCard');
 
 // Client Supabase dedie a la lecture publique du catalogue (table `products`,
 // RLS "public can read active products") -- distinct de SUPABASE_URL/KEY
@@ -25,7 +26,7 @@ module.exports = [
     .addUserOption((o) => o.setName('membre').setDescription('Membre (toi par défaut)')),
   new SlashCommandBuilder()
     .setName('stock')
-    .setDescription('Disponibilité des produits streamIN par catégorie.')
+    .setDescription('Disponibilité des produits Vercell par catégorie.')
     .addStringOption((o) => o.setName('categorie').setDescription('Filtrer par catégorie (ex: Steam, Streaming, Fortnite)')),
 ];
 
@@ -79,7 +80,7 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'avatar') {
     const target = interaction.options.getUser('membre') || interaction.user;
-    const embed = new EmbedBuilder().setColor(0xff2d2d).setTitle(`🖼️ Avatar de ${target.username}`).setImage(target.displayAvatarURL({ size: 1024 }));
+    const embed = new EmbedBuilder().setColor(0xffffff).setTitle(`🖼️ Avatar de ${target.username}`).setImage(target.displayAvatarURL({ size: 1024 }));
     return interaction.reply({ embeds: [embed] });
   }
 
@@ -89,9 +90,9 @@ module.exports.execute = async (interaction) => {
     }
     await interaction.deferReply();
     const categorie = interaction.options.getString('categorie');
-    let query = supabase.from('products').select('name, category, price, is_active').eq('is_active', true).order('category');
+    let query = supabase.from('products').select('id, name, category, price, is_active').eq('is_active', true).order('category');
     if (categorie) query = query.ilike('category', `%${categorie}%`);
-    const { data: products, error } = await query.limit(25);
+    const { data: products, error } = await query.limit(40);
     if (error || !products?.length) {
       return interaction.editReply({ embeds: [brandedEmbed({ title: '📦 Stock', description: categorie ? `Aucun produit actif trouvé pour "${categorie}".` : 'Aucun produit actif trouvé.', color: RED })] });
     }
@@ -100,21 +101,13 @@ module.exports.execute = async (interaction) => {
     const stockMap = new Map((stocks || []).map((s) => [s.product_id, s]));
 
     const byCategory = products.reduce((acc, p) => {
-      (acc[p.category] ||= []).push(p);
+      (acc[p.category] ||= []).push({ name: p.name, price: p.price, stockInfo: stockMap.get(p.id) ?? null });
       return acc;
     }, {});
 
-    const fields = Object.entries(byCategory)
-      .slice(0, 10)
-      .map(([cat, items]) => ({
-        name: `${cat} (${items.length})`,
-        value: items
-          .slice(0, 8)
-          .map((p) => `• ${p.name} — ${Number(p.price).toFixed(2)}€`)
-          .join('\n')
-          .slice(0, 1024),
-      }));
-
-    return interaction.editReply({ embeds: [brandedEmbed({ title: '📦 Produits disponibles', description: 'Boutique : https://shop-plus-nu.vercel.app/', fields })] });
+    const subtitle = `Boutique : https://shop-plus-nu.vercel.app/${categorie ? ` — filtré sur "${categorie}"` : ''}`;
+    const png = await renderStockPng(subtitle, byCategory);
+    const attachment = new AttachmentBuilder(png, { name: 'stock.png' });
+    return interaction.editReply({ files: [attachment] });
   }
 };

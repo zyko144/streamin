@@ -2,7 +2,7 @@
   "name": "streamin-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "Bot Discord streamIN - Tickets, roles, boosts & notifications de commandes",
+  "description": "Bot Discord Vercell - Tickets, roles, boosts & notifications de commandes",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",

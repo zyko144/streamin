@@ -13,22 +13,22 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/** Fond de carte streamIN : noir -> rouge en degrade diagonal, avec un
- * halo rouge dans un coin pour la profondeur. Dessine un rectangle arrondi
+/** Fond de carte Vercell : noir -> gris en degrade diagonal, avec un
+ * halo blanc dans un coin pour la profondeur. Dessine un rectangle arrondi
  * rempli, pret a recevoir le reste du contenu par dessus. */
 function drawCardBackground(ctx, W, H, radius = 24) {
   const bg = ctx.createLinearGradient(0, 0, W, H);
   bg.addColorStop(0, '#050505');
-  bg.addColorStop(0.55, '#1a0505');
-  bg.addColorStop(0.85, '#4d0d0d');
-  bg.addColorStop(1, '#8c1414');
+  bg.addColorStop(0.55, '#141414');
+  bg.addColorStop(0.85, '#262626');
+  bg.addColorStop(1, '#404040');
   ctx.fillStyle = bg;
   roundRect(ctx, 0, 0, W, H, radius);
   ctx.fill();
 
   const glow = ctx.createRadialGradient(W * 0.85, H * 0.1, 10, W * 0.85, H * 0.1, W * 0.5);
-  glow.addColorStop(0, 'rgba(255,45,45,0.35)');
-  glow.addColorStop(1, 'rgba(255,45,45,0)');
+  glow.addColorStop(0, 'rgba(255,255,255,0.20)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 }

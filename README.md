@@ -1,11 +1,11 @@
-# streamIN — Bot Discord
+# Vercell — Bot Discord
 
-Bot du serveur Discord streamIN : configuration automatique du serveur, système de tickets, vérification, récompenses de boost, suivi des invitations, notifications de commandes du site, commandes utilitaires.
+Bot du serveur Discord Vercell : configuration automatique du serveur, système de tickets, vérification, récompenses de boost, suivi des invitations, notifications de commandes du site, commandes utilitaires.
 
 ## Mise en route
 
-1. **Portail développeur Discord** ([discord.com/developers/applications](https://discord.com/developers/applications)) → application **streamIN** → onglet **Bot** → vérifie que **SERVER MEMBERS INTENT** et **MESSAGE CONTENT INTENT** sont activés (obligatoires — le second sert à l'automatisation des tickets ci-dessous). Si le token a pu fuiter à un moment, régénère-le.
-2. Le bot est déjà membre du serveur **StreamIN** avec les droits nécessaires. Pour un autre serveur, invite-le avec :
+1. **Portail développeur Discord** ([discord.com/developers/applications](https://discord.com/developers/applications)) → application **Vercell** → onglet **Bot** → vérifie que **SERVER MEMBERS INTENT** et **MESSAGE CONTENT INTENT** sont activés (obligatoires — le second sert à l'automatisation des tickets ci-dessous). Si le token a pu fuiter à un moment, régénère-le.
+2. Le bot est déjà membre du serveur **Vercell** avec les droits nécessaires. Pour un autre serveur, invite-le avec :
 
    ```
    https://discord.com/oauth2/authorize?client_id=1540887261199999017&permissions=1100317060114&scope=bot%20applications.commands
@@ -43,8 +43,8 @@ Rôles : `Staff`, `✅ Client Vérifié`, `💎 Booster VIP`.
 - **Invitations** : à l'arrivée d'un membre, `👋・bienvenue` affiche qui a rejoint et par quelle invitation (code + inviteur), en plus du nombre de membres.
 - **Notifications de commandes** : le site poste directement sur le webhook Discord créé par `/setup` (repo `shop-plus`, variable `DISCORD_ORDERS_WEBHOOK_URL`) — ce bot n'a pas besoin d'accès à la base de données du site pour ça.
 - **Logs staff** : ouverture/fermeture de ticket, récompenses de boost, exécution de `/setup` — tout est loggé dans `📝・logs` (jamais de secret/token/donnée bancaire).
-- **Commandes utiles** : `/ping`, `/serverinfo`, `/userinfo [membre]`, `/avatar [membre]`, `/stock [categorie]` (lit le catalogue public du site via Supabase, `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY`).
-- **`/order_lookup <email_ou_numero>`** (staff uniquement) : génère une **carte PNG** (thème noir/rouge streamIN, `utils/cards/orderHistoryCard.js`) avec l'historique complet d'un client — commandes groupées par date, produits **rangés par catégorie**, prix, statut coloré — postée directement dans le ticket. **Volontairement réservé au staff** et pas automatique sur les messages des clients — sinon n'importe qui pourrait taper l'email d'un autre client pour consulter ses achats. Nécessite `SUPABASE_SERVICE_ROLE_KEY` (voir Sécurité ci-dessous).
+- **Commandes utiles** : `/ping`, `/serverinfo`, `/userinfo [membre]`, `/avatar [membre]`, `/stock [categorie]` (carte PNG noir/blanc générée avec `utils/cards/stockCard.js`, produits rangés par catégorie avec statut de stock — lit le catalogue public du site via Supabase, `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY`).
+- **`/order_lookup <email_ou_numero>`** (staff uniquement) : génère une **carte PNG** (thème noir/blanc Vercell, `utils/cards/orderHistoryCard.js`) avec l'historique complet d'un client — commandes groupées par date, produits **rangés par catégorie**, prix, statut — postée directement dans le ticket. **Volontairement réservé au staff** et pas automatique sur les messages des clients — sinon n'importe qui pourrait taper l'email d'un autre client pour consulter ses achats. Nécessite `SUPABASE_SERVICE_ROLE_KEY` (voir Sécurité ci-dessous).
 
 ## Sécurité
 

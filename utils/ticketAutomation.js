@@ -188,7 +188,7 @@ const PROBLEM_CATEGORIES = [
   {
     id: 'scam_accusation',
     label: '⚠️ Accusation d\'arnaque',
-    reply: "On comprend ta frustration. streamIN livre toutes ses commandes normalement, un membre du staff a été notifié en priorité en message privé pour regarder ton cas.",
+    reply: "On comprend ta frustration. Vercell livre toutes ses commandes normalement, un membre du staff a été notifié en priorité en message privé pour regarder ton cas.",
     patterns: [/\barnaqu/, /\bscam\b/, /c.?est\s*du\s*vol/, /vous\s*etes\s*des\s*voleurs/, /vous\s*volez\s*(les\s*gens|mon\s*argent)/],
   },
   {

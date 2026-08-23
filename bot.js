@@ -71,7 +71,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
       embeds: [
         brandedEmbed({
           title: `👋 Bienvenue ${member.user.username} !`,
-          description: `${member} vient de rejoindre streamIN — membre n°${member.guild.memberCount}.\n\n${inviterLine}`,
+          description: `${member} vient de rejoindre Vercell — membre n°${member.guild.memberCount}.\n\n${inviterLine}`,
           thumbnail: member.user.displayAvatarURL({ size: 256 }),
         }),
       ],
@@ -169,7 +169,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 
 // --- Serveur Express minimal (keep-alive Render + healthcheck) ---
 const app = express();
-app.get('/', (_req, res) => res.send('streamIN bot en ligne ✅'));
+app.get('/', (_req, res) => res.send('Vercell bot en ligne ✅'));
 app.get('/health', (_req, res) => res.json({ status: 'ok', guilds: client.guilds.cache.size, uptime: process.uptime() }));
 
 const PORT = process.env.PORT || 3000;

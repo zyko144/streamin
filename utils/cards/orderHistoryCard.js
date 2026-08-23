@@ -13,9 +13,9 @@ const ORDER_TOTAL_H = 34;
 const FOOTER_H = 46;
 
 const STATUS_STYLE = {
-  pending: { label: 'EN ATTENTE', color: '#eab308' },
-  completed: { label: 'TERMINÉE', color: '#22c55e' },
-  cancelled: { label: 'ANNULÉE', color: '#ef4444' },
+  pending: { label: 'EN ATTENTE', color: '#a3a3a3' },
+  completed: { label: 'TERMINÉE', color: '#ffffff' },
+  cancelled: { label: 'ANNULÉE', color: '#525252' },
 };
 
 function groupByCategory(items) {
@@ -78,7 +78,7 @@ function drawOrderHistory(ctx, { query, laidOut, H }) {
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillText(date, MARGIN_X, y + 20);
 
-    const status = STATUS_STYLE[order.status] || { label: order.status.toUpperCase(), color: '#94a3b8' };
+    const status = STATUS_STYLE[order.status] || { label: order.status.toUpperCase(), color: '#a3a3a3' };
     ctx.font = '700 12px "Poppins Bold"';
     const badgeText = status.label;
     const badgeW = ctx.measureText(badgeText).width + 24;
@@ -100,7 +100,7 @@ function drawOrderHistory(ctx, { query, laidOut, H }) {
     // Categories
     for (const [category, items] of categories) {
       ctx.font = '700 13px "Poppins SemiBold"';
-      ctx.fillStyle = '#ff6b6b';
+      ctx.fillStyle = '#e5e5e5';
       ctx.fillText(category.toUpperCase(), MARGIN_X + 12, y);
       y += CATEGORY_HEADER_H;
 
@@ -123,7 +123,7 @@ function drawOrderHistory(ctx, { query, laidOut, H }) {
     ctx.fillStyle = '#ffffff';
     ctx.fillText('Total', MARGIN_X + 12, y + 10);
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#ff4d4d';
+    ctx.fillStyle = '#ffffff';
     ctx.fillText(`${Number(order.total).toFixed(2)}€`, W - MARGIN_X, y + 10);
     ctx.textAlign = 'left';
     y += ORDER_TOTAL_H;
@@ -142,7 +142,7 @@ function drawOrderHistory(ctx, { query, laidOut, H }) {
   ctx.font = '400 13px "Poppins"';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   ctx.textAlign = 'center';
-  ctx.fillText('streamIN — généré automatiquement', W / 2, H - 18);
+  ctx.fillText('Vercell — généré automatiquement', W / 2, H - 18);
   ctx.textAlign = 'left';
 }
 

@@ -1,20 +1,20 @@
-// Theme visuel partage par tout le bot : rouge/noir streamIN.
+// Theme visuel partage par tout le bot : noir/blanc Vercell.
 const { EmbedBuilder } = require('discord.js');
 
-const RED = 0xff2d2d;
-const RED_ALERT = 0xe11d48;
-const GREEN_SUCCESS = 0x22c55e;
-const GOLD_BOOST = 0xf47521;
+const RED = 0xffffff;
+const RED_ALERT = 0x404040;
+const GREEN_SUCCESS = 0xd4d4d4;
+const GOLD_BOOST = 0xa3a3a3;
 
-// URL publique du logo (servi par le site streamIN, pas par ce bot).
+// URL publique du logo (servi par le site Vercell, pas par ce bot).
 const LOGO_URL = process.env.LOGO_URL || 'https://shop-plus-nu.vercel.app/logo.png';
-const FOOTER = { text: 'streamIN', iconURL: LOGO_URL };
+const FOOTER = { text: 'Vercell', iconURL: LOGO_URL };
 
 /**
  * @param {object} opts
  * @param {string} [opts.title]
  * @param {string} [opts.description]
- * @param {number} [opts.color] defaut : rouge streamIN
+ * @param {number} [opts.color] defaut : rouge Vercell
  * @param {Array}  [opts.fields]
  * @param {string} [opts.image] URL d'image/GIF pour le corps de l'embed
  * @param {string} [opts.thumbnail] petite image en haut a droite

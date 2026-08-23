@@ -104,7 +104,11 @@ async function runSetup(guild) {
     presetId: process.env.ORDERS_CHANNEL_ID || undefined,
     overwrites: staffOnly(),
   });
-  summary.push(`✅ Catégorie ${shopCat} (${produits}, ${ordersChannel})`);
+  const avisChannel = await findOrCreateChannel(guild, '⭐・avis', {
+    parent: shopCat,
+    overwrites: readOnly(),
+  });
+  summary.push(`✅ Catégorie ${shopCat} (${produits}, ${ordersChannel}, ${avisChannel})`);
 
   // --- 💬 COMMUNAUTÉ ---
   const communityCat = await findOrCreateCategory(guild, '💬 COMMUNAUTÉ');
@@ -221,16 +225,21 @@ async function runSetup(guild) {
     markPosted(guild.id, 'produits');
   }
 
-  // --- Webhook commandes (pour que le site poste directement) ---
-  let webhookUrl = null;
-  try {
-    const existingWebhooks = await ordersChannel.fetchWebhooks();
-    let webhook = existingWebhooks.find((w) => w.name === 'Vercell Commandes');
-    if (!webhook) webhook = await ordersChannel.createWebhook({ name: 'Vercell Commandes' });
-    webhookUrl = webhook.url;
-  } catch {
-    // Permission "Gerer les webhooks" manquante, laisse null : le setup indique la marche a suivre manuelle.
+  // --- Webhooks (pour que le site poste directement, sans repasser par le bot) ---
+  async function getOrCreateWebhook(channel, name) {
+    try {
+      const existing = await channel.fetchWebhooks();
+      let webhook = existing.find((w) => w.name === name);
+      if (!webhook) webhook = await channel.createWebhook({ name });
+      return webhook.url;
+    } catch {
+      // Permission "Gerer les webhooks" manquante, laisse null : le setup indique la marche a suivre manuelle.
+      return null;
+    }
   }
+  const ordersWebhookUrl = await getOrCreateWebhook(ordersChannel, 'Vercell Commandes');
+  const avisWebhookUrl = await getOrCreateWebhook(avisChannel, 'Vercell Avis');
+  const annoncesWebhookUrl = await getOrCreateWebhook(annonces, 'Vercell Annonces');
 
   // --- Message de bienvenue générique (le message d'arrivée par membre est gere par events/guildMemberAdd) ---
   if (!alreadyPosted(guild.id, 'welcome')) {
@@ -248,11 +257,13 @@ async function runSetup(guild) {
 
   return {
     summary,
-    webhookUrl,
+    ordersWebhookUrl,
+    avisWebhookUrl,
+    annoncesWebhookUrl,
     staffRole,
     boosterRole,
     verifiedRole,
-    channels: { bienvenue, annonces, reglement, faq, produits, ordersChannel, general, ouvrirTicket, boostChannel, logsChannel },
+    channels: { bienvenue, annonces, reglement, faq, produits, ordersChannel, avisChannel, general, ouvrirTicket, boostChannel, logsChannel },
   };
 }
 

@@ -25,14 +25,20 @@ module.exports.execute = async (interaction) => {
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    const { summary, webhookUrl } = await runSetup(interaction.guild);
+    const { summary, ordersWebhookUrl, avisWebhookUrl, annoncesWebhookUrl } = await runSetup(interaction.guild);
 
-    const webhookLine = webhookUrl
-      ? `\n\n🔗 **Webhook commandes** (à mettre dans \`DISCORD_ORDERS_WEBHOOK_URL\` sur le site) :\n||${webhookUrl}||`
-      : `\n\n⚠️ Webhook non créé automatiquement (permission "Gérer les webhooks" manquante ?). Crée-le à la main dans le salon commandes → Paramètres → Intégrations → Webhooks.`;
+    const webhookLine = (label, envVar, url) =>
+      url
+        ? `\n\n🔗 **Webhook ${label}** (à mettre dans \`${envVar}\` sur le site) :\n||${url}||`
+        : `\n\n⚠️ Webhook ${label} non créé automatiquement (permission "Gérer les webhooks" manquante ?). Crée-le à la main dans le salon correspondant → Paramètres → Intégrations → Webhooks.`;
+
+    const webhookLines =
+      webhookLine('commandes', 'DISCORD_ORDERS_WEBHOOK_URL', ordersWebhookUrl) +
+      webhookLine('avis', 'DISCORD_AVIS_WEBHOOK_URL', avisWebhookUrl) +
+      webhookLine('annonces', 'DISCORD_ANNONCES_WEBHOOK_URL', annoncesWebhookUrl);
 
     await interaction.editReply({
-      embeds: [brandedEmbed({ title: '✅ Configuration terminée', description: summary.join('\n') + webhookLine })],
+      embeds: [brandedEmbed({ title: '✅ Configuration terminée', description: summary.join('\n') + webhookLines })],
     });
     logAction(interaction.guild, 'SETUP_RUN', { Par: `${interaction.user} (${interaction.user.id})` });
   } catch (err) {

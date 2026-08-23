@@ -18,7 +18,7 @@ Bot du serveur Discord Vercell : configuration automatique du serveur, système 
 
 ```
 📌 INFOS       → 👋・bienvenue  📢・annonces  📜・règlement (+ bouton vérification)  ❓・faq
-🛒 BOUTIQUE    → 🛍️・produits  📦・commandes (staff, webhook de notifs)
+🛒 BOUTIQUE    → 🛍️・produits  📦・commandes (staff, webhook de notifs)  ⭐・avis (webhook, avis clients postés par le site)
 💬 COMMUNAUTÉ  → 💬・général
 🎫 SUPPORT     → 🎫・ouvrir-un-ticket (panneau bouton)
 🚀 BOOST       → 🚀・boost-remerciements (infos épinglées sur la récompense)
@@ -41,7 +41,7 @@ Rôles : `Staff`, `✅ Client Vérifié`, `💎 Booster VIP`.
 - **Vérification** : bouton "✅ Je confirme avoir lu" dans `📜・règlement` → attribue le rôle `✅ Client Vérifié`.
 - **Boosts** : à chaque boost, remerciement dans `🚀・boost-remerciements` + rôle 💎 Booster VIP automatique. Tous les 2 boosts cumulés pour un même membre → ticket cadeau auto-ouvert (1 compte Steam ou streaming au choix). Le palier est rappelé en message épinglé dans le salon boost.
 - **Invitations** : à l'arrivée d'un membre, `👋・bienvenue` affiche qui a rejoint et par quelle invitation (code + inviteur), en plus du nombre de membres.
-- **Notifications de commandes** : le site poste directement sur le webhook Discord créé par `/setup` (repo `shop-plus`, variable `DISCORD_ORDERS_WEBHOOK_URL`) — ce bot n'a pas besoin d'accès à la base de données du site pour ça.
+- **Notifications de commandes, avis et annonces** : le site poste directement sur les webhooks Discord créés par `/setup` (repo `shop-plus`, variables `DISCORD_ORDERS_WEBHOOK_URL`, `DISCORD_AVIS_WEBHOOK_URL`, `DISCORD_ANNONCES_WEBHOOK_URL`) — ce bot n'a pas besoin d'accès à la base de données du site pour ça, tout passe par de simples requêtes HTTP côté site.
 - **Logs staff** : ouverture/fermeture de ticket, récompenses de boost, exécution de `/setup` — tout est loggé dans `📝・logs` (jamais de secret/token/donnée bancaire).
 - **Commandes utiles** : `/ping`, `/serverinfo`, `/userinfo [membre]`, `/avatar [membre]`, `/stock [categorie]` (carte PNG noir/blanc générée avec `utils/cards/stockCard.js`, produits rangés par catégorie avec statut de stock — lit le catalogue public du site via Supabase, `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY`).
 - **`/order_lookup <email_ou_numero>`** (staff uniquement) : génère une **carte PNG** (thème noir/blanc Vercell, `utils/cards/orderHistoryCard.js`) avec l'historique complet d'un client — commandes groupées par date, produits **rangés par catégorie**, prix, statut — postée directement dans le ticket. **Volontairement réservé au staff** et pas automatique sur les messages des clients — sinon n'importe qui pourrait taper l'email d'un autre client pour consulter ses achats. Nécessite `SUPABASE_SERVICE_ROLE_KEY` (voir Sécurité ci-dessous).

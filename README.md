@@ -44,7 +44,7 @@ Rôles : `Staff`, `✅ Client Vérifié`, `💎 Booster VIP`.
 - **Notifications de commandes** : le site poste directement sur le webhook Discord créé par `/setup` (repo `shop-plus`, variable `DISCORD_ORDERS_WEBHOOK_URL`) — ce bot n'a pas besoin d'accès à la base de données du site pour ça.
 - **Logs staff** : ouverture/fermeture de ticket, récompenses de boost, exécution de `/setup` — tout est loggé dans `📝・logs` (jamais de secret/token/donnée bancaire).
 - **Commandes utiles** : `/ping`, `/serverinfo`, `/userinfo [membre]`, `/avatar [membre]`, `/stock [categorie]` (lit le catalogue public du site via Supabase, `SHOP_SUPABASE_URL`/`SHOP_SUPABASE_KEY`).
-- **`/order_lookup <email_ou_numero>`** (staff uniquement) : affiche l'historique complet d'un client (date, produits, prix, statut) directement dans le ticket. **Volontairement réservé au staff** et pas automatique sur les messages des clients — sinon n'importe qui pourrait taper l'email d'un autre client pour consulter ses achats. Nécessite `SUPABASE_SERVICE_ROLE_KEY` (voir Sécurité ci-dessous).
+- **`/order_lookup <email_ou_numero>`** (staff uniquement) : génère une **carte PNG** (thème noir/rouge streamIN, `utils/cards/orderHistoryCard.js`) avec l'historique complet d'un client — commandes groupées par date, produits **rangés par catégorie**, prix, statut coloré — postée directement dans le ticket. **Volontairement réservé au staff** et pas automatique sur les messages des clients — sinon n'importe qui pourrait taper l'email d'un autre client pour consulter ses achats. Nécessite `SUPABASE_SERVICE_ROLE_KEY` (voir Sécurité ci-dessous).
 
 ## Sécurité
 

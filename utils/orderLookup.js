@@ -22,12 +22,6 @@ if (process.env.SHOP_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
 
 const EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
-const STATUS_LABELS = {
-  pending: '🟡 En attente',
-  completed: '✅ Terminée',
-  cancelled: '🔴 Annulée',
-};
-
 function isOrderLookupEnabled() {
   return Boolean(supabaseAdmin);
 }
@@ -66,7 +60,7 @@ async function findOrders(query) {
 
   const { data: fullOrders } = await supabaseAdmin
     .from('orders')
-    .select('id, created_at, status, total, order_items(product_name, quantity, unit_price)')
+    .select('id, created_at, status, total, order_items(product_name, category, quantity, unit_price)')
     .in('id', orderIds)
     .order('created_at', { ascending: false });
 
@@ -79,16 +73,4 @@ async function findOrders(query) {
   }));
 }
 
-function formatOrdersEmbedFields(orders) {
-  return orders.slice(0, 5).map((o) => {
-    const date = new Date(o.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const itemsLines = o.items.map((it) => `• ${it.quantity}x **${it.product_name}** — ${Number(it.unit_price).toFixed(2)}€`).join('\n') || '—';
-    const statusLabel = STATUS_LABELS[o.status] || o.status;
-    return {
-      name: `📦 Commande #${o.id.slice(0, 8)} — ${date}`,
-      value: `${itemsLines}\n**Total :** ${Number(o.total).toFixed(2)}€ — **Statut :** ${statusLabel}`,
-    };
-  });
-}
-
-module.exports = { isOrderLookupEnabled, findOrders, formatOrdersEmbedFields, STATUS_LABELS };
+module.exports = { isOrderLookupEnabled, findOrders };

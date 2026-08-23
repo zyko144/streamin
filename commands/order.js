@@ -1,6 +1,7 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const { brandedEmbed, RED_ALERT } = require('../utils/theme');
-const { isOrderLookupEnabled, findOrders, formatOrdersEmbedFields } = require('../utils/orderLookup');
+const { isOrderLookupEnabled, findOrders } = require('../utils/orderLookup');
+const { renderOrderHistoryPng } = require('../utils/cards/orderHistoryCard');
 const { logAction } = require('../utils/logs');
 
 module.exports = [
@@ -33,15 +34,9 @@ module.exports.execute = async (interaction) => {
       });
     }
 
-    await interaction.editReply({
-      embeds: [
-        brandedEmbed({
-          title: `📋 Historique — ${query}`,
-          description: `${orders.length} commande(s) trouvée(s) :`,
-          fields: formatOrdersEmbedFields(orders),
-        }),
-      ],
-    });
+    const png = await renderOrderHistoryPng(query, orders);
+    const attachment = new AttachmentBuilder(png, { name: 'historique-commande.png' });
+    await interaction.editReply({ files: [attachment] });
     logAction(interaction.guild, 'ORDER_LOOKUP', { Par: `${interaction.user} (${interaction.user.id})`, Recherche: query, Résultats: `${orders.length}` });
   } catch (err) {
     console.error('Erreur /order_lookup:', err);

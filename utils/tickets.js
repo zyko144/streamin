@@ -15,20 +15,20 @@ function sanitizeName(input) {
     .slice(0, 20) || 'membre';
 }
 
-function topicKey(userId, namePrefix) {
-  return `ticket-owner:${userId}:${namePrefix}`;
+function topicKey(userId, dedupKey) {
+  return `ticket-owner:${userId}:${dedupKey}`;
 }
 
-function getOpenTicketId(guildId, userId, namePrefix = 'ticket') {
+function getOpenTicketId(guildId, userId, dedupKey = 'ticket') {
   const db = readDatabase();
-  return db.openTickets?.[guildId]?.[`${userId}:${namePrefix}`] ?? null;
+  return db.openTickets?.[guildId]?.[`${userId}:${dedupKey}`] ?? null;
 }
 
-function setOpenTicketId(guildId, userId, channelId, namePrefix = 'ticket') {
+function setOpenTicketId(guildId, userId, channelId, dedupKey = 'ticket') {
   const db = readDatabase();
   db.openTickets = db.openTickets || {};
   db.openTickets[guildId] = db.openTickets[guildId] || {};
-  const key = `${userId}:${namePrefix}`;
+  const key = `${userId}:${dedupKey}`;
   if (channelId) db.openTickets[guildId][key] = channelId;
   else delete db.openTickets[guildId][key];
   writeDatabase(db);
@@ -40,8 +40,8 @@ function setOpenTicketId(guildId, userId, channelId, namePrefix = 'ticket') {
  * a ete perdu (redeploiement) ou si un deploiement en double a laisse un
  * salon orphelin.
  */
-function findExistingTicketChannel(guild, userId, namePrefix = 'ticket') {
-  const marker = topicKey(userId, namePrefix);
+function findExistingTicketChannel(guild, userId, dedupKey = 'ticket') {
+  const marker = topicKey(userId, dedupKey);
   return guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.topic === marker) ?? null;
 }
 
@@ -53,7 +53,12 @@ function findExistingTicketChannel(guild, userId, namePrefix = 'ticket') {
  * @param {import('discord.js').GuildMember} member
  * @param {object} opts
  * @param {import('discord.js').CategoryChannel|null} [opts.category]
- * @param {string} [opts.namePrefix] prefixe du salon (defaut "ticket")
+ * @param {string} [opts.namePrefix] prefixe du NOM du salon (defaut "ticket")
+ * @param {string} [opts.dedupKey] cle utilisee pour la deduplication "1 ticket ouvert max"
+ *   (defaut : meme valeur que namePrefix). Deux appels avec le meme dedupKey
+ *   pour le meme membre ne creeront jamais 2 salons simultanement, meme si
+ *   namePrefix differe (utile pour regrouper plusieurs categories de ticket
+ *   client sous une seule limite "1 ticket support ouvert a la fois").
  * @param {string} [opts.staffRoleId] role staff a inviter dans le ticket
  * @param {string} [opts.title]
  * @param {string} [opts.description]
@@ -62,22 +67,23 @@ async function createTicket(guild, member, opts = {}) {
   const {
     category = null,
     namePrefix = 'ticket',
+    dedupKey = namePrefix,
     staffRoleId = null,
     title = '🎫 Nouveau ticket',
     description = `Bienvenue ${member} ! Explique ta demande, le staff prendra le relais rapidement.`,
   } = opts;
 
-  const lockKey = `${guild.id}:${member.id}:${namePrefix}`;
+  const lockKey = `${guild.id}:${member.id}:${dedupKey}`;
   if (activeTicketCreations.has(lockKey)) return null;
 
   // Verite terrain d'abord (fonctionne meme si deux process tournent en meme
   // temps ou si db.json a ete perdu), puis repli sur le cache local.
-  const liveExisting = findExistingTicketChannel(guild, member.id, namePrefix);
+  const liveExisting = findExistingTicketChannel(guild, member.id, dedupKey);
   if (liveExisting) {
-    setOpenTicketId(guild.id, member.id, liveExisting.id, namePrefix);
+    setOpenTicketId(guild.id, member.id, liveExisting.id, dedupKey);
     return { existing: liveExisting };
   }
-  const existingId = getOpenTicketId(guild.id, member.id, namePrefix);
+  const existingId = getOpenTicketId(guild.id, member.id, dedupKey);
   if (existingId && guild.channels.cache.has(existingId)) {
     return { existing: guild.channels.cache.get(existingId) };
   }
@@ -106,11 +112,11 @@ async function createTicket(guild, member, opts = {}) {
       name: `${namePrefix}-${sanitizeName(member.user.username)}`,
       type: ChannelType.GuildText,
       parent: category?.id,
-      topic: topicKey(member.id, namePrefix),
+      topic: topicKey(member.id, dedupKey),
       permissionOverwrites: overwrites,
     });
 
-    setOpenTicketId(guild.id, member.id, channel.id, namePrefix);
+    setOpenTicketId(guild.id, member.id, channel.id, dedupKey);
 
     const embed = brandedEmbed({ title, description });
     const pingContent = staffRoleId ? `<@&${staffRoleId}>` : undefined;

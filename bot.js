@@ -8,6 +8,8 @@ const { initDatabase } = require('./utils/db');
 const { handleTicketManage } = require('./utils/ticketManage');
 const { createTicket } = require('./utils/tickets');
 const { TICKET_PANEL_BUTTON_ID } = require('./utils/ticketPanel');
+const { TICKET_CATEGORY_SELECT_ID, buildTicketCategoryRow } = require('./utils/ticketCategoryMenu');
+const { TICKET_CATEGORIES } = require('./utils/ticketCategories');
 const { VERIFY_BUTTON_ID } = require('./utils/verify');
 const { handleBoostStarted } = require('./utils/boosts');
 const { cacheGuildInvites, bumpInviteCache, dropInviteCache, resolveUsedInvite } = require('./utils/invites');
@@ -88,21 +90,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId === TICKET_PANEL_BUTTON_ID) {
+      // Etape 1 : demander la categorie avant de creer le salon (ephemere,
+      // seul le client qui a clique le voit).
+      return interaction.reply({
+        embeds: [brandedEmbed({ title: '🎫 Nouveau ticket', description: 'Choisis la raison de ton ticket dans le menu ci-dessous.' })],
+        components: [buildTicketCategoryRow()],
+        ephemeral: true,
+      });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === TICKET_CATEGORY_SELECT_ID) {
+      const chosen = TICKET_CATEGORIES.find((c) => c.id === interaction.values[0]);
+      if (!chosen) return interaction.update({ content: '❌ Catégorie inconnue.', embeds: [], components: [] });
+
+      await interaction.deferUpdate();
+
       const supportCat = interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === '🎫 SUPPORT');
       const staffRole = interaction.guild.roles.cache.find((r) => r.name === 'Staff');
 
       const result = await createTicket(interaction.guild, interaction.member, {
         category: supportCat || null,
         staffRoleId: staffRole?.id,
+        namePrefix: chosen.namePrefix,
+        dedupKey: 'support',
+        title: `${chosen.emoji} ${chosen.label}`,
+        description: chosen.welcome(interaction.member),
       });
 
       if (!result) {
-        return interaction.reply({ embeds: [brandedEmbed({ title: '⏳ Un instant...', description: 'Création du ticket en cours, réessaie dans quelques secondes.', color: RED_ALERT })], ephemeral: true });
+        return interaction.editReply({ embeds: [brandedEmbed({ title: '⏳ Un instant...', description: 'Création du ticket en cours, réessaie dans quelques secondes.', color: RED_ALERT })], components: [] });
       }
       if (result.existing) {
-        return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Ticket déjà ouvert', description: `Tu as déjà un ticket ouvert : ${result.existing}`, color: RED_ALERT })], ephemeral: true });
+        return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Ticket déjà ouvert', description: `Tu as déjà un ticket ouvert : ${result.existing}`, color: RED_ALERT })], components: [] });
       }
-      return interaction.reply({ embeds: [brandedEmbed({ title: '✅ Ticket créé', description: `Ton ticket a été créé : ${result.channel}` })], ephemeral: true });
+      return interaction.editReply({ embeds: [brandedEmbed({ title: '✅ Ticket créé', description: `Ton ticket a été créé : ${result.channel}` })], components: [] });
     }
 
     if (interaction.isButton() && interaction.customId === VERIFY_BUTTON_ID) {

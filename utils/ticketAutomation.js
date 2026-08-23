@@ -249,6 +249,8 @@ const INTENTS = [
               '**Merci de nous envoyer une capture d\'écran de la confirmation PayPal directement dans ce salon** (photo/capture, pas juste du texte).',
               '',
               'Dès que la preuve est reçue, le staff est notifié automatiquement en message privé pour vérifier et valider ta commande.',
+              '',
+              "⚠️ La validation n'est pas instantanée pour l'instant : c'est un membre du staff qui vérifie manuellement, ça peut prendre un peu de temps selon sa disponibilité.",
             ].join('\n'),
             color: GOLD_BOOST,
           }),
@@ -269,7 +271,7 @@ const INTENTS = [
         embeds: [
           brandedEmbed({
             title: '⏱️ Délai de livraison',
-            description: "Généralement quelques minutes après confirmation du paiement (dès qu'un membre du staff est disponible). Merci de patienter, on s'occupe de toi rapidement !",
+            description: "⚠️ **Les commandes ne sont pas encore instantanées pour l'instant** : chaque commande est vérifiée et livrée manuellement par un membre du staff. En général ça se joue en quelques minutes à quelques heures selon sa disponibilité — merci de ta patience, on s'occupe de toi dès que possible !",
           }),
         ],
       });

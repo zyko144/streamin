@@ -90,7 +90,7 @@ module.exports.execute = async (interaction) => {
     }
     await interaction.deferReply();
     const categorie = interaction.options.getString('categorie');
-    let query = supabase.from('products').select('id, name, category, price, is_active').eq('is_active', true).order('category');
+    let query = supabase.from('products').select('id, name, category, price, is_active, logo').eq('is_active', true).order('category');
     if (categorie) query = query.ilike('category', `%${categorie}%`);
     const { data: products, error } = await query.limit(40);
     if (error || !products?.length) {
@@ -101,7 +101,7 @@ module.exports.execute = async (interaction) => {
     const stockMap = new Map((stocks || []).map((s) => [s.product_id, s]));
 
     const byCategory = products.reduce((acc, p) => {
-      (acc[p.category] ||= []).push({ name: p.name, price: p.price, stockInfo: stockMap.get(p.id) ?? null });
+      (acc[p.category] ||= []).push({ name: p.name, price: p.price, category: p.category, logo: p.logo, stockInfo: stockMap.get(p.id) ?? null });
       return acc;
     }, {});
 

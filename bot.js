@@ -193,6 +193,40 @@ app.post('/internal/announcement-card', async (req, res) => {
   }
 });
 
+// --- DIAGNOSTIC TEMPORAIRE 2 : a retirer une fois le probleme identifie ---
+app.get('/internal/debug-icon', async (req, res) => {
+  if (!process.env.INTERNAL_SECRET || req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  const slug = req.query.slug || 'deezer';
+  const jsdelivrUrl = `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${slug}.svg`;
+  const result = { slug, jsdelivrUrl };
+  try {
+    const fetchStart = Date.now();
+    const r = await fetch(jsdelivrUrl);
+    const text = await r.text();
+    result.fetch = { ok: r.ok, status: r.status, contentType: r.headers.get('content-type'), ms: Date.now() - fetchStart, textLength: text.length, textSample: text.slice(0, 120) };
+    try {
+      const whiteSvg = text.replace('<svg ', '<svg fill="#ffffff" ');
+      const { loadImage } = require('@napi-rs/canvas');
+      const img = await loadImage(Buffer.from(whiteSvg, 'utf-8'));
+      result.loadImage = { ok: true, width: img.width, height: img.height };
+    } catch (e) {
+      result.loadImage = { error: String((e && e.stack) || e) };
+    }
+  } catch (e) {
+    result.fetch = { error: String((e && e.stack) || e) };
+  }
+  try {
+    const { loadSimpleIcon } = require('./utils/cards/simpleIcon');
+    const img2 = await loadSimpleIcon(slug);
+    result.loadSimpleIcon = img2 ? { ok: true, width: img2.width, height: img2.height } : { ok: false, value: img2 };
+  } catch (e) {
+    result.loadSimpleIcon = { error: String((e && e.stack) || e) };
+  }
+  res.json(result);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌍 Serveur web (healthcheck) lancé sur le port ${PORT}`));
 

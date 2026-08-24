@@ -6,13 +6,28 @@ const LOAD_TIMEOUT_MS = 4000;
 
 const cache = new Map();
 
-/** Reproduit la resolution de logo de ProductCard.tsx (site) : URL absolue
- * telle quelle, chemin "/xxx.png" relatif a la boutique, sinon slug Simple
- * Icons (charge via jsDelivr + recoloration, voir simpleIcon.js -- l'URL
- * directe cdn.simpleicons.org est bloquee depuis Render). Quelques
- * categories ont toujours la meme icone quel que soit le produit (comme
- * sur le site). Toujours en blanc pour coller au theme. */
-function resolveLogo({ logo, category }) {
+// Meme liste que RARE_SKIN_IMAGES cote site (src/lib/products.ts) : les
+// skins Fortnite Rare n'ont pas de `logo` en base, leur image vient de
+// fortnite-api.com d'apres leur nom.
+const RARE_SKIN_IMAGES = {
+  'Black Knight': 'https://fortnite-api.com/images/cosmetics/br/cid_035_athena_commando_m_medieval/icon.png',
+  'Galaxy': 'https://fortnite-api.com/images/cosmetics/br/cid_175_athena_commando_m_celestial/icon.png',
+  'Travis Scott': 'https://fortnite-api.com/images/cosmetics/br/cid_703_athena_commando_m_cyclone/icon.png',
+  'The Reaper': 'https://fortnite-api.com/images/cosmetics/br/cid_084_athena_commando_m_assassin/icon.png',
+  'Take The L': 'https://fortnite-api.com/images/cosmetics/br/eid_takethel/icon.png',
+  'Minty Axe': 'https://fortnite-api.com/images/cosmetics/br/pickaxe_id_294_candycane/icon.png',
+  'Leviathan Axe': 'https://fortnite-api.com/images/cosmetics/br/pickaxe_id_508_historianmale_6bqsw/icon.png',
+};
+
+/** Reproduit la resolution de logo de ProductCard.tsx (site) : skin Fortnite
+ * Rare d'apres le nom, sinon URL absolue telle quelle, chemin "/xxx.png"
+ * relatif a la boutique, sinon slug Simple Icons (charge via jsDelivr +
+ * recoloration, voir simpleIcon.js -- l'URL directe cdn.simpleicons.org est
+ * bloquee depuis Render). Quelques categories ont toujours la meme icone
+ * quel que soit le produit (comme sur le site). Toujours en blanc pour
+ * coller au theme (sauf les skins, qui gardent leurs vraies couleurs). */
+function resolveLogo({ logo, category, name }) {
+  if (category === 'Fortnite Rare' && RARE_SKIN_IMAGES[name]) return { type: 'url', value: RARE_SKIN_IMAGES[name] };
   if (category === 'Fortnite') return { type: 'slug', value: 'fortnite' };
   if (category === 'V-Bucks') return { type: 'slug', value: 'epicgames' };
   if (category === 'Discord') return { type: 'slug', value: 'discord' };

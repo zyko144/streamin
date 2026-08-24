@@ -1,6 +1,25 @@
-const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { brandedEmbed, RED } = require('../utils/theme');
-const { renderStockPng } = require('../utils/cards/stockCard');
+const { renderStockCategoryPage } = require('../utils/cards/stockPageCard');
+
+// Meme ordre que les categories sur le site (GROUP_META dans src/routes/index.tsx),
+// pour que /stock se parcoure dans un ordre familier. Une categorie absente
+// de cette liste (nouvelle categorie ajoutee cote site) atterrit a la fin,
+// triee alphabetiquement, plutot que de disparaitre.
+const CATEGORY_ORDER = [
+  'Streaming', 'VPN', 'Discord', 'Twitch',
+  'Fortnite', 'Fortnite Rare', 'V-Bucks', 'Valorant EU', 'Robux', 'Steam', 'Epic Games',
+];
+function sortCategories(categories) {
+  return [...categories].sort((a, b) => {
+    const ia = CATEGORY_ORDER.indexOf(a);
+    const ib = CATEGORY_ORDER.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+}
 
 // Client Supabase dedie a la lecture publique du catalogue (table `products`,
 // RLS "public can read active products") -- distinct de SUPABASE_URL/KEY
@@ -26,8 +45,8 @@ module.exports = [
     .addUserOption((o) => o.setName('membre').setDescription('Membre (toi par défaut)')),
   new SlashCommandBuilder()
     .setName('stock')
-    .setDescription('Disponibilité des produits Vercell par catégorie.')
-    .addStringOption((o) => o.setName('categorie').setDescription('Filtrer par catégorie (ex: Steam, Streaming, Fortnite)')),
+    .setDescription('Catalogue complet Vercell, une catégorie par page (navigable).')
+    .addStringOption((o) => o.setName('categorie').setDescription('Ouvrir directement sur cette catégorie (ex: Steam, Streaming, Fortnite)')),
 ];
 
 module.exports.execute = async (interaction) => {
@@ -90,11 +109,12 @@ module.exports.execute = async (interaction) => {
     }
     await interaction.deferReply();
     const categorie = interaction.options.getString('categorie');
-    let query = supabase.from('products').select('id, name, category, price, is_active, logo').eq('is_active', true).order('category');
-    if (categorie) query = query.ilike('category', `%${categorie}%`);
-    const { data: products, error } = await query.limit(40);
+
+    // Tout le catalogue actif, pas de limite : chaque categorie devient sa
+    // propre page navigable plutot que de tout entasser sur une seule image.
+    const { data: products, error } = await supabase.from('products').select('id, name, category, price, is_active, logo').eq('is_active', true).order('name');
     if (error || !products?.length) {
-      return interaction.editReply({ embeds: [brandedEmbed({ title: '📦 Stock', description: categorie ? `Aucun produit actif trouvé pour "${categorie}".` : 'Aucun produit actif trouvé.', color: RED })] });
+      return interaction.editReply({ embeds: [brandedEmbed({ title: '📦 Stock', description: 'Aucun produit actif trouvé.', color: RED })] });
     }
 
     const { data: stocks } = await supabase.from('product_stock').select('product_id, stock, is_unlimited');
@@ -105,9 +125,51 @@ module.exports.execute = async (interaction) => {
       return acc;
     }, {});
 
-    const subtitle = `Boutique : https://shop-plus-nu.vercel.app/${categorie ? ` — filtré sur "${categorie}"` : ''}`;
-    const png = await renderStockPng(subtitle, byCategory);
-    const attachment = new AttachmentBuilder(png, { name: 'stock.png' });
-    return interaction.editReply({ files: [attachment] });
+    const orderedCategories = sortCategories(Object.keys(byCategory));
+    const pages = orderedCategories.map((category) => ({ category, items: byCategory[category] }));
+
+    let index = 0;
+    if (categorie) {
+      const found = orderedCategories.findIndex((c) => c.toLowerCase().includes(categorie.toLowerCase()));
+      if (found !== -1) index = found;
+      else {
+        return interaction.editReply({ embeds: [brandedEmbed({ title: '📦 Stock', description: `Aucune catégorie ne correspond à "${categorie}".`, color: RED })] });
+      }
+    }
+
+    const PREV_ID = `stock_prev_${interaction.id}`;
+    const NEXT_ID = `stock_next_${interaction.id}`;
+    const buildRow = (i, disabled = false) => new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(PREV_ID).setLabel('◀ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(disabled || i === 0),
+      new ButtonBuilder().setCustomId(NEXT_ID).setLabel('Suivant ▶').setStyle(ButtonStyle.Secondary).setDisabled(disabled || i === pages.length - 1),
+    );
+    const renderPage = async (i) => {
+      const page = pages[i];
+      const png = await renderStockCategoryPage({ category: page.category, items: page.items, pageIndex: i, pageCount: pages.length });
+      return new AttachmentBuilder(png, { name: 'stock.png' });
+    };
+
+    const firstAttachment = await renderPage(index);
+    const message = await interaction.editReply({
+      files: [firstAttachment],
+      components: pages.length > 1 ? [buildRow(index)] : [],
+    });
+
+    if (pages.length <= 1) return;
+
+    const collector = message.createMessageComponentCollector({
+      filter: (i) => i.customId === PREV_ID || i.customId === NEXT_ID,
+      time: 5 * 60 * 1000,
+    });
+
+    collector.on('collect', async (i) => {
+      index = i.customId === PREV_ID ? Math.max(0, index - 1) : Math.min(pages.length - 1, index + 1);
+      const attachment = await renderPage(index);
+      await i.update({ files: [attachment], components: [buildRow(index)] });
+    });
+
+    collector.on('end', () => {
+      interaction.editReply({ components: [buildRow(index, true)] }).catch(() => {});
+    });
   }
 };

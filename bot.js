@@ -199,18 +199,26 @@ app.get('/internal/debug-image', async (req, res) => {
     return res.status(401).json({ error: 'unauthorized' });
   }
   const url = req.query.url || 'https://cdn.simpleicons.org/deezer/ffffff';
-  const result = { url, fetch: null, loadImage: null };
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  const result = { url, fetchNoUA: null, fetchWithUA: null, loadImage: null };
   try {
     const fetchStart = Date.now();
     const r = await fetch(url);
-    result.fetch = { ok: r.ok, status: r.status, contentType: r.headers.get('content-type'), ms: Date.now() - fetchStart };
+    result.fetchNoUA = { ok: r.ok, status: r.status, contentType: r.headers.get('content-type'), ms: Date.now() - fetchStart };
   } catch (e) {
-    result.fetch = { error: String(e && e.message || e) };
+    result.fetchNoUA = { error: String(e && e.message || e) };
+  }
+  try {
+    const fetchStart = Date.now();
+    const r = await fetch(url, { headers: { 'User-Agent': UA } });
+    result.fetchWithUA = { ok: r.ok, status: r.status, contentType: r.headers.get('content-type'), ms: Date.now() - fetchStart };
+  } catch (e) {
+    result.fetchWithUA = { error: String(e && e.message || e) };
   }
   try {
     const { loadImage } = require('@napi-rs/canvas');
     const imgStart = Date.now();
-    const img = await loadImage(url);
+    const img = await loadImage(url, { requestOptions: { headers: { 'User-Agent': UA } } });
     result.loadImage = { ok: true, width: img.width, height: img.height, ms: Date.now() - imgStart };
   } catch (e) {
     result.loadImage = { error: String(e && e.stack || e) };

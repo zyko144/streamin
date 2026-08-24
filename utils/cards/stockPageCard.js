@@ -3,16 +3,16 @@ const { createCanvas } = require('@napi-rs/canvas');
 const { roundRect, drawCardBackground, fitText } = require('./draw');
 const { getProductLogo } = require('./logos');
 
-const W = 1320;
-const MARGIN_X = 44;
-const HEADER_H = 150;
-const FOOTER_H = 60;
-const COLS = 3;
-const GAP_X = 28;
-const GAP_Y = 28;
+const W = 1920;
+const MARGIN_X = 56;
+const HEADER_H = 180;
+const FOOTER_H = 74;
+const COLS = 4;
+const GAP_X = 32;
+const GAP_Y = 32;
 const CARD_W = Math.floor((W - MARGIN_X * 2 - GAP_X * (COLS - 1)) / COLS);
-const CARD_H = 320;
-const LOGO_RING = 116;
+const CARD_H = 380;
+const LOGO_RING = 152;
 
 function hexToRgba(hex, alpha) {
   const h = String(hex || '#ffffff').replace('#', '');
@@ -58,25 +58,25 @@ async function renderStockCategoryPage({ category, items, pageIndex, pageCount }
   // Titre categorie
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
-  ctx.font = '700 46px "Poppins Bold"';
-  ctx.fillText(category.toUpperCase(), MARGIN_X, 66);
+  ctx.font = '700 58px "Poppins Bold"';
+  ctx.fillText(category.toUpperCase(), MARGIN_X, 82);
 
-  ctx.font = '400 20px "Poppins"';
+  ctx.font = '400 24px "Poppins"';
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText(`${items.length} produit${items.length > 1 ? 's' : ''} · shop-plus-nu.vercel.app`, MARGIN_X, 98);
+  ctx.fillText(`${items.length} produit${items.length > 1 ? 's' : ''} · shop-plus-nu.vercel.app`, MARGIN_X, 120);
 
   // Pastille de pagination en haut a droite
   if (pageCount > 1) {
     const pageLabel = `${pageIndex + 1} / ${pageCount}`;
-    ctx.font = '700 20px "Poppins SemiBold"';
-    const pw = ctx.measureText(pageLabel).width + 52;
+    ctx.font = '700 24px "Poppins SemiBold"';
+    const pw = ctx.measureText(pageLabel).width + 60;
     ctx.fillStyle = 'rgba(255,255,255,0.1)';
-    roundRect(ctx, W - MARGIN_X - pw, 40, pw, 50, 25);
+    roundRect(ctx, W - MARGIN_X - pw, 46, pw, 58, 29);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(pageLabel, W - MARGIN_X - pw / 2, 65);
+    ctx.fillText(pageLabel, W - MARGIN_X - pw / 2, 75);
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
   }
@@ -84,8 +84,8 @@ async function renderStockCategoryPage({ category, items, pageIndex, pageCount }
   ctx.strokeStyle = 'rgba(255,255,255,0.1)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(MARGIN_X, HEADER_H - 20);
-  ctx.lineTo(W - MARGIN_X, HEADER_H - 20);
+  ctx.moveTo(MARGIN_X, HEADER_H - 24);
+  ctx.lineTo(W - MARGIN_X, HEADER_H - 24);
   ctx.stroke();
 
   const logos = await Promise.all(items.map((item) => getProductLogo(item)));
@@ -100,15 +100,15 @@ async function renderStockCategoryPage({ category, items, pageIndex, pageCount }
 
     // Carte
     ctx.fillStyle = 'rgba(255,255,255,0.045)';
-    roundRect(ctx, x, y, CARD_W, CARD_H, 24);
+    roundRect(ctx, x, y, CARD_W, CARD_H, 28);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.09)';
     ctx.lineWidth = 1.5;
-    roundRect(ctx, x, y, CARD_W, CARD_H, 24);
+    roundRect(ctx, x, y, CARD_W, CARD_H, 28);
     ctx.stroke();
 
     // Halo colore derriere le logo (couleur reelle du produit)
-    const ringCy = y + 32 + LOGO_RING / 2;
+    const ringCy = y + 40 + LOGO_RING / 2;
     const glow = ctx.createRadialGradient(cx, ringCy, 4, cx, ringCy, LOGO_RING * 0.9);
     glow.addColorStop(0, hexToRgba(color, 0.35));
     glow.addColorStop(1, hexToRgba(color, 0));
@@ -128,11 +128,11 @@ async function renderStockCategoryPage({ category, items, pageIndex, pageCount }
     ctx.stroke();
 
     const logo = logos[i];
-    const logoSize = 66;
+    const logoSize = 92;
     if (logo) {
       ctx.save();
       ctx.shadowColor = hexToRgba(color, 0.7);
-      ctx.shadowBlur = 22;
+      ctx.shadowBlur = 26;
       const ratio = Math.min(logoSize / logo.width, logoSize / logo.height);
       const dw = logo.width * ratio;
       const dh = logo.height * ratio;
@@ -142,7 +142,7 @@ async function renderStockCategoryPage({ category, items, pageIndex, pageCount }
       // Pas de logo trouve : initiale du produit dans sa couleur plutot
       // qu'une icone (les emoji ne sont pas supportes par les polices
       // embarquees de la carte, voir fonts.js).
-      ctx.font = '700 44px "Poppins Bold"';
+      ctx.font = '700 58px "Poppins Bold"';
       ctx.fillStyle = color;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -151,38 +151,38 @@ async function renderStockCategoryPage({ category, items, pageIndex, pageCount }
     }
 
     // Nom du produit
-    const textY = y + 32 + LOGO_RING + 42;
-    ctx.font = '700 22px "Poppins Bold"';
+    const textY = y + 40 + LOGO_RING + 54;
+    ctx.font = '700 27px "Poppins Bold"';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText(fitText(ctx, item.name, CARD_W - 40), cx, textY);
+    ctx.fillText(fitText(ctx, item.name, CARD_W - 48), cx, textY);
 
     // Statut de stock (pastille)
     const status = stockLabel(item.stockInfo);
-    ctx.font = '600 15px "Poppins Medium"';
+    ctx.font = '600 17px "Poppins Medium"';
     const statusColor = TONE_COLORS[status.tone];
-    const statusW = ctx.measureText(status.text).width + 32;
-    const statusY = textY + 26;
+    const statusW = ctx.measureText(status.text).width + 38;
+    const statusY = textY + 30;
     ctx.fillStyle = status.tone === 'off' ? 'rgba(255,92,92,0.12)' : status.tone === 'warn' ? 'rgba(255,209,102,0.12)' : 'rgba(255,255,255,0.08)';
-    roundRect(ctx, cx - statusW / 2, statusY, statusW, 34, 17);
+    roundRect(ctx, cx - statusW / 2, statusY, statusW, 40, 20);
     ctx.fill();
     ctx.fillStyle = statusColor;
     ctx.textBaseline = 'middle';
-    ctx.fillText(status.text, cx, statusY + 17);
+    ctx.fillText(status.text, cx, statusY + 20);
     ctx.textBaseline = 'alphabetic';
 
     // Prix, en grand, en bas de carte
     const priceStr = `${Number(item.price).toFixed(2)}€`;
-    ctx.font = '700 30px "Poppins Bold"';
+    ctx.font = '700 36px "Poppins Bold"';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(priceStr, cx, y + CARD_H - 28);
+    ctx.fillText(priceStr, cx, y + CARD_H - 34);
     ctx.textAlign = 'left';
   });
 
-  ctx.font = '400 15px "Poppins"';
+  ctx.font = '400 18px "Poppins"';
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('Vercell — généré automatiquement', W / 2, H - 26);
+  ctx.fillText('Vercell — généré automatiquement', W / 2, H - 30);
   ctx.textAlign = 'left';
 
   return canvas.encode('png');

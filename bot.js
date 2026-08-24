@@ -193,6 +193,31 @@ app.post('/internal/announcement-card', async (req, res) => {
   }
 });
 
+// --- DIAGNOSTIC TEMPORAIRE : a retirer une fois le probleme d'image identifie ---
+app.get('/internal/debug-image', async (req, res) => {
+  if (!process.env.INTERNAL_SECRET || req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  const url = req.query.url || 'https://cdn.simpleicons.org/deezer/ffffff';
+  const result = { url, fetch: null, loadImage: null };
+  try {
+    const fetchStart = Date.now();
+    const r = await fetch(url);
+    result.fetch = { ok: r.ok, status: r.status, contentType: r.headers.get('content-type'), ms: Date.now() - fetchStart };
+  } catch (e) {
+    result.fetch = { error: String(e && e.message || e) };
+  }
+  try {
+    const { loadImage } = require('@napi-rs/canvas');
+    const imgStart = Date.now();
+    const img = await loadImage(url);
+    result.loadImage = { ok: true, width: img.width, height: img.height, ms: Date.now() - imgStart };
+  } catch (e) {
+    result.loadImage = { error: String(e && e.stack || e) };
+  }
+  res.json(result);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌍 Serveur web (healthcheck) lancé sur le port ${PORT}`));
 

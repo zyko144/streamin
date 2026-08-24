@@ -18,13 +18,23 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Un rate de chargement (blip reseau ponctuel vers cdn.simpleicons.org ou
+ * le site) ne doit pas priver la carte de son image pour de bon : deux
+ * nouvelles tentatives avant d'abandonner et de rendre la carte sans logo. */
 async function safeLoadImage(url) {
   if (!url) return null;
-  try {
-    return await loadImage(url);
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await loadImage(url);
+    } catch {
+      if (attempt < 2) await delay(300);
+    }
   }
+  return null;
 }
 
 /**

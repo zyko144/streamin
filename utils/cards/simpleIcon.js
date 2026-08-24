@@ -10,7 +10,13 @@ const cache = new Map();
 // n'importe quelle taille d'affichage raisonnable.
 const RENDER_SIZE = 512;
 
-/** Charge un logo de marque (slug Simple Icons) en blanc, net, de facon fiable.
+function normalizeColor(color) {
+  const hex = String(color || 'ffffff').replace('#', '');
+  return /^[0-9a-f]{3,8}$/i.test(hex) ? hex : 'ffffff';
+}
+
+/** Charge un logo de marque (slug Simple Icons), net, dans sa vraie couleur,
+ * de facon fiable.
  *
  * cdn.simpleicons.org bloque les requetes venant de Render (403 confirme
  * en diagnostic direct depuis le bot en prod -- ni un User-Agent
@@ -18,18 +24,20 @@ const RENDER_SIZE = 512;
  * IP/datacenter, pas un rate-limit ponctuel). jsDelivr sert exactement les
  * memes SVG (c'est la source officielle du paquet simple-icons) et n'est
  * pas bloque, mais ne fournit pas la coloration par URL : on recupere le
- * SVG brut et on l'injecte nous-memes en blanc avant de le donner a canvas.
+ * SVG brut et on l'injecte nous-memes avant de le donner a canvas.
  */
-async function loadSimpleIcon(slug) {
+async function loadSimpleIcon(slug, color) {
   if (!slug) return null;
-  if (cache.has(slug)) return cache.get(slug);
+  const hex = normalizeColor(color);
+  const cacheKey = `${slug}:${hex}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
   try {
     const res = await fetch(`https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${slug}.svg`);
     if (!res.ok) return null;
     const svgText = await res.text();
-    const whiteSvg = svgText.replace('<svg ', `<svg width="${RENDER_SIZE}" height="${RENDER_SIZE}" fill="#ffffff" `);
-    const img = await loadImage(Buffer.from(whiteSvg, 'utf-8'));
-    cache.set(slug, img);
+    const coloredSvg = svgText.replace('<svg ', `<svg width="${RENDER_SIZE}" height="${RENDER_SIZE}" fill="#${hex}" `);
+    const img = await loadImage(Buffer.from(coloredSvg, 'utf-8'));
+    cache.set(cacheKey, img);
     return img;
   } catch {
     return null;

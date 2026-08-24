@@ -112,7 +112,7 @@ module.exports.execute = async (interaction) => {
 
     // Tout le catalogue actif, pas de limite : chaque categorie devient sa
     // propre page navigable plutot que de tout entasser sur une seule image.
-    const { data: products, error } = await supabase.from('products').select('id, name, category, price, is_active, logo').eq('is_active', true).order('name');
+    const { data: products, error } = await supabase.from('products').select('id, name, category, price, is_active, logo, color').eq('is_active', true).order('name');
     if (error || !products?.length) {
       return interaction.editReply({ embeds: [brandedEmbed({ title: '📦 Stock', description: 'Aucun produit actif trouvé.', color: RED })] });
     }
@@ -121,7 +121,7 @@ module.exports.execute = async (interaction) => {
     const stockMap = new Map((stocks || []).map((s) => [s.product_id, s]));
 
     const byCategory = products.reduce((acc, p) => {
-      (acc[p.category] ||= []).push({ name: p.name, price: p.price, category: p.category, logo: p.logo, stockInfo: stockMap.get(p.id) ?? null });
+      (acc[p.category] ||= []).push({ name: p.name, price: p.price, category: p.category, logo: p.logo, color: p.color, stockInfo: stockMap.get(p.id) ?? null });
       return acc;
     }, {});
 

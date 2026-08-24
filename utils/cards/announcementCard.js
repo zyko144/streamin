@@ -5,7 +5,7 @@ const { loadSimpleIcon } = require('./simpleIcon');
 const W = 1200;
 const H = 700;
 
-const SIMPLEICONS_URL_RE = /^https:\/\/cdn\.simpleicons\.org\/([a-z0-9-]+)\//i;
+const SIMPLEICONS_URL_RE = /^https:\/\/cdn\.simpleicons\.org\/([a-z0-9-]+)\/([0-9a-f]{3,8})/i;
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -35,7 +35,7 @@ function delay(ms) {
 async function safeLoadImage(url) {
   if (!url) return null;
   const simpleIconMatch = url.match(SIMPLEICONS_URL_RE);
-  if (simpleIconMatch) return loadSimpleIcon(simpleIconMatch[1]);
+  if (simpleIconMatch) return loadSimpleIcon(simpleIconMatch[1], simpleIconMatch[2]);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await loadImage(url);

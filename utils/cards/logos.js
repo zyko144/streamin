@@ -24,8 +24,7 @@ const RARE_SKIN_IMAGES = {
  * relatif a la boutique, sinon slug Simple Icons (charge via jsDelivr +
  * recoloration, voir simpleIcon.js -- l'URL directe cdn.simpleicons.org est
  * bloquee depuis Render). Quelques categories ont toujours la meme icone
- * quel que soit le produit (comme sur le site). Toujours en blanc pour
- * coller au theme (sauf les skins, qui gardent leurs vraies couleurs). */
+ * quel que soit le produit (comme sur le site). */
 function resolveLogo({ logo, category, name }) {
   if (category === 'Fortnite Rare' && RARE_SKIN_IMAGES[name]) return { type: 'url', value: RARE_SKIN_IMAGES[name] };
   if (category === 'Fortnite') return { type: 'slug', value: 'fortnite' };
@@ -42,17 +41,18 @@ function withTimeout(promise, ms) {
 }
 
 /** Charge (et met en cache pour la duree de vie du process) le logo d'un
- * produit. Ne cache jamais un echec : un slug invalide ou un service
- * momentanement indisponible sera retente au prochain /stock plutot que de
- * rester sans icone pour toujours. Ne fait jamais planter le rendu. */
+ * produit, dans sa vraie couleur (`item.color`, la meme que sur le site).
+ * Ne cache jamais un echec : un slug invalide ou un service momentanement
+ * indisponible sera retente au prochain /stock plutot que de rester sans
+ * icone pour toujours. Ne fait jamais planter le rendu. */
 async function getProductLogo(item) {
   const resolved = resolveLogo(item);
   if (!resolved) return null;
-  const cacheKey = `${resolved.type}:${resolved.value}`;
+  const cacheKey = `${resolved.type}:${resolved.value}:${item.color || ''}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey);
   const img =
     resolved.type === 'slug'
-      ? await withTimeout(loadSimpleIcon(resolved.value), LOAD_TIMEOUT_MS)
+      ? await withTimeout(loadSimpleIcon(resolved.value, item.color), LOAD_TIMEOUT_MS)
       : await withTimeout(loadImage(resolved.value).catch(() => null), LOAD_TIMEOUT_MS);
   if (img) cache.set(cacheKey, img);
   return img;

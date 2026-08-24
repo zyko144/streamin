@@ -1,8 +1,11 @@
 require('./fonts');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { loadSimpleIcon } = require('./simpleIcon');
 
 const W = 1200;
 const H = 700;
+
+const SIMPLEICONS_URL_RE = /^https:\/\/cdn\.simpleicons\.org\/([a-z0-9-]+)\//i;
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -22,11 +25,17 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Un rate de chargement (blip reseau ponctuel vers cdn.simpleicons.org ou
- * le site) ne doit pas priver la carte de son image pour de bon : deux
- * nouvelles tentatives avant d'abandonner et de rendre la carte sans logo. */
+/** Un rate de chargement ponctuel (site, image produit externe...) ne doit
+ * pas priver la carte de son image pour de bon : deux nouvelles tentatives
+ * avant d'abandonner et de rendre la carte sans logo. Les URLs
+ * cdn.simpleicons.org (le site les genere pour les logos de marque) sont
+ * bloquees par Render (403 systematique, confirme en diagnostic) : on les
+ * redirige vers jsDelivr + recoloration (simpleIcon.js) au lieu d'appeler
+ * cette URL directement. */
 async function safeLoadImage(url) {
   if (!url) return null;
+  const simpleIconMatch = url.match(SIMPLEICONS_URL_RE);
+  if (simpleIconMatch) return loadSimpleIcon(simpleIconMatch[1]);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await loadImage(url);
